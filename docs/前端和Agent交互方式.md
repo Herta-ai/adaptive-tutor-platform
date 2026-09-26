@@ -121,7 +121,7 @@ agy --print <固定教学指令与JSON任务封装>
 2. `init` 记录 CLI 会话 ID 和权限模式，不把工具列表广播到学习界面。
 3. 仅在聊天任务中将 `step_type=agent_response` 的 `text_delta` 映射成文字预览，保留 `step_index` 做顺序处理。工具、系统、内部执行日志不作为导师消息。
 4. `step_update.state=DONE` 只表示一个步骤结束，绝不是整个回复结束。
-5. 必须收到 `result.status=SUCCESS`，并等到子进程以 0 退出，才有成功候选。缺少 result、非零退出或未知状态均不得发布内容；result 后 5 秒仍不退出则回收本任务进程并报协议异常。
+5. 必须收到 `result.status=SUCCESS`，并等到子进程以 0 退出，才有成功候选。缺少 result、非零退出或未知状态均不得发布内容；result 后 15 秒仍不退出则回收本任务进程并报协议异常，任务总超时保持不变。2026-09-26 真实续聊触发原 5 秒门槛，独立时序探针也测得正常清理约 3.7 秒；因此为 CLI 清理保留有限宽限，不跳过退出码验证。
 6. 普通聊天以最终 `result.response` 替换对应消息的预览，不能再次追加最终全文。保留实际 Markdown，而非终端控制字符。
 7. 课程、大纲、题目、诊断等任务通过 MCP 保存候选草稿；最终只读取 `result.structured_output` 中的 `GenerationReceipt`，再验证并提交对应草稿。普通 JSON Schema 探针仍可返回其自身测试对象；不从 `response` 里用正则“捞 JSON”，不渲染中间结构化输出。
 8. CLI 的新增未知事件可记录类型后忽略；已知事件缺字段、无可识别终态或非 JSON stdout 是协议错误。stderr 单独限长、脱敏，不混入聊天流。

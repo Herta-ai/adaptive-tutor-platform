@@ -215,8 +215,32 @@ small {
 }
 .course-card {
   text-align: left;
-  padding: 26px;
   min-height: 200px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.course-open {
+  text-align: left;
+  padding: 26px;
+  border: 0;
+  background: transparent;
+  width: 100%;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.course-actions {
+  padding: 0 26px 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+.course-delete {
+  color: #a63832;
+  border-color: #dcbab5;
+  background: #fff;
 }
 .course-card h3 {
   margin-top: 24px;
@@ -296,7 +320,7 @@ small {
   padding: 40px 48px 80px;
   max-width: 920px;
   width: 100%;
-  margin: auto;
+  margin: 0 auto;
   align-self: start;
 }
 .lesson-meta {
@@ -456,6 +480,7 @@ small {
   margin-top: 10px;
 }
 .tutor {
+  align-self: start;
   border-left: 1px solid var(--line);
   display: flex;
   flex-direction: column;

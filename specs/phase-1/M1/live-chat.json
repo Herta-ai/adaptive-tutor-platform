@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-26T09:28:31.485Z",
+  "cliVersion": "1.2.11",
+  "synthetic": true,
+  "turns": [
+    {
+      "state": "completed",
+      "messageStatus": "complete",
+      "responseLength": 313,
+      "elapsedMs": 23386.8701,
+      "error": null,
+      "conversationBound": true,
+      "continuedSameConversation": null
+    },
+    {
+      "state": "completed",
+      "messageStatus": "complete",
+      "responseLength": 698,
+      "elapsedMs": 33696.1746,
+      "error": null,
+      "conversationBound": true,
+      "continuedSameConversation": true
+    }
+  ],
+  "status": "passed"
+}

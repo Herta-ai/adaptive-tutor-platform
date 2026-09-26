@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import { Store } from '../src/storage/database';
+import { Store, uuid } from '../src/storage/database';
+import { createGeometryExample } from '../src/domain/examples';
 import { createApplication } from '../src/server/http';
 let root: string, store: Store, app: ReturnType<typeof createApplication>, web: any;
 test.beforeAll(async () => {
@@ -20,6 +21,120 @@ test.afterAll(async () => {
   await web?.close();
   store?.close();
   if (root) rmSync(root, { recursive: true, force: true });
+});
+test('我的课程可确认删除：取消不删除，活动任务保护，记录清理且刷新不恢复', async ({ page }) => {
+  const course = createGeometryExample(app.courses);
+  store.put('course', { ...course, title: '待删除课程' });
+  const keep = createGeometryExample(app.courses);
+  store.put('course', { ...keep, title: '保留课程' });
+  const node = store.list('node', course.id)[0];
+  store.put('note', { id: node.id, courseId: course.id, text: '删除回归笔记', version: 1 });
+  const job = { id: uuid(), courseId: course.id, kind: 'generate_lesson', state: 'running' };
+  store.put('job', job);
+  await page.goto(app.origin + '/#bootstrap=' + app.mintBootstrap());
+  const remove = page.getByRole('button', { name: '删除课程：待删除课程', exact: true });
+  let requests = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'DELETE') requests++;
+  });
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('无法撤销');
+    await dialog.dismiss();
+  });
+  await remove.click();
+  await expect(remove).toBeVisible();
+  expect(requests).toBe(0);
+  page.once('dialog', (dialog) => dialog.accept());
+  await remove.click();
+  await expect(page.getByRole('alert').filter({ hasText: '请先取消当前课程的活动任务' })).toBeVisible();
+  expect(store.get('course', course.id)).toBeDefined();
+  store.put('job', { ...job, state: 'completed' });
+  page.once('dialog', (dialog) => dialog.accept());
+  await remove.click();
+  await expect(remove).toHaveCount(0);
+  expect(store.get('course', course.id)).toBeUndefined();
+  expect(store.list('node', course.id)).toHaveLength(0);
+  expect(store.list('lesson', course.id)).toHaveLength(0);
+  expect(store.list('note', course.id)).toHaveLength(0);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '今天，想理解什么？' })).toBeVisible();
+  await expect(remove).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '保留课程', exact: true })).toBeVisible();
+});
+test('长大纲不会将正文或导师列推到下方，失败消息不再等待', async ({ page }) => {
+  const course = createGeometryExample(app.courses);
+  store.put('course', { ...course, title: '长大纲布局回归' });
+  const first = store.list('node', course.id)[0];
+  for (let i = 0; i < 65; i++) {
+    const node = {
+      ...first,
+      id: uuid(),
+      title: '后续章节 ' + i,
+      currentLessonVersion: 0,
+      contentStatus: 'not_generated',
+    };
+    store.put('node', node);
+    store.put('progress', {
+      id: node.id,
+      courseId: course.id,
+      status: 'locked',
+      masteredOnce: false,
+      reviewStage: 0,
+      bypass: false,
+      cycleId: null,
+    });
+  }
+  const session = store.put('session', {
+    id: uuid(),
+    courseId: course.id,
+    status: 'active',
+    providerBindingValid: false,
+  });
+  const requestId = uuid();
+  store.put('job', {
+    id: requestId,
+    courseId: course.id,
+    sessionId: session.id,
+    kind: 'chat',
+    state: 'failed',
+    error: { code: 'CLI_TIMEOUT', message: 'CLI 运行超时' },
+  });
+  // Also exercise the UI fallback for legacy pending messages before server restart repair.
+  store.put(
+    'message',
+    {
+      id: uuid(),
+      courseId: course.id,
+      sessionId: session.id,
+      requestId,
+      role: 'assistant',
+      status: 'pending',
+      text: '',
+    },
+    session.id,
+  );
+  await page.goto(app.origin + '/#bootstrap=' + app.mintBootstrap());
+  await page
+    .getByRole('button')
+    .filter({ has: page.getByRole('heading', { name: '长大纲布局回归' }) })
+    .click();
+  await expect(page.getByRole('heading', { name: '直角三角形的面积', exact: true })).toBeVisible();
+  const bounds = await page.evaluate(() => {
+    const top = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().top;
+    return {
+      workspace: top('.workspace'),
+      lesson: top('.lesson'),
+      tutor: top('.tutor'),
+      scroll: scrollY,
+    };
+  });
+  expect(bounds.scroll).toBe(0);
+  expect(Math.abs(bounds.lesson - bounds.workspace)).toBeLessThan(2);
+  expect(Math.abs(bounds.tutor - bounds.workspace)).toBeLessThan(2);
+  await expect(page.locator('.message.assistant')).toContainText('CLI 运行超时');
+  await expect(page.locator('.message.assistant')).not.toContainText(/等待|回复中/);
+  await page.getByPlaceholder('这一段，我还有些疑问…').fill('重新提问');
+  await expect(page.getByRole('button', { name: '发送 ↑' })).toBeEnabled();
 });
 test('A03/A18 离线示例、实验、独立练习与笔记', async ({ page }) => {
   await page.goto(app.origin + '/#bootstrap=' + app.mintBootstrap());

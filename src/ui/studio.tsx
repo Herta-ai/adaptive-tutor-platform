@@ -74,6 +74,28 @@ export function Studio() {
   async function refreshList() {
     setCourses(await api('/courses'));
   }
+  async function deleteCourse(course: any) {
+    if (
+      !window.confirm(
+        `确定删除「${course.title}」吗？\n\n课程内容、学习记录、笔记和导师对话将被删除，无法撤销。已导出的备份文件不会删除。`,
+      )
+    )
+      return;
+    await run(async () => {
+      try {
+        await command(
+          `/courses/${course.id}`,
+          { expectedRevision: course.revision, confirm: true },
+          'DELETE',
+        );
+        setCourses((items) => items.filter((item) => item.id !== course.id));
+      } catch (e) {
+        // Refresh stale revisions so the user can review the latest course before retrying.
+        await refreshList();
+        throw e;
+      }
+    });
+  }
   async function refresh(id = courseId, sid = sessionId) {
     const data = await api(`/courses/${id}/snapshot${sid ? '?sessionId=' + sid : ''}`);
     if (courseRef.current === id)
@@ -389,18 +411,30 @@ export function Studio() {
           </h2>
           <div className="course-grid">
             {courses.map((c) => (
-              <button className="course-card" key={c.id} onClick={() => setCourseId(c.id)}>
-                <span className="badge">
-                  {c.status === 'draft'
-                    ? '待规划'
-                    : c.status === 'archived'
-                      ? '已归档'
-                      : '学习计划'}
-                </span>
-                <h3>{c.title}</h3>
-                <p>{c.goal}</p>
-                <span className="muted">进入学习 →</span>
-              </button>
+              <article className="course-card" key={c.id}>
+                <button className="course-open" onClick={() => setCourseId(c.id)}>
+                  <span className="badge">
+                    {c.status === 'draft'
+                      ? '待规划'
+                      : c.status === 'archived'
+                        ? '已归档'
+                        : '学习计划'}
+                  </span>
+                  <h3>{c.title}</h3>
+                  <p>{c.goal}</p>
+                  <span className="muted">进入学习 →</span>
+                </button>
+                <div className="course-actions">
+                  <button
+                    className="course-delete"
+                    disabled={busy}
+                    aria-label={`删除课程：${c.title}`}
+                    onClick={() => void deleteCourse(c)}
+                  >
+                    删除课程
+                  </button>
+                </div>
+              </article>
             ))}
           </div>
           {!courses.length && (
@@ -804,15 +838,37 @@ export function Studio() {
             </div>
             <div className="chat-history">
               {snapshot?.messages.length ? (
-                snapshot.messages.map((m: any) => (
-                  <div key={m.id} className={'message ' + m.role}>
-                    <small>
-                      {m.role === 'user' ? '你' : '导师'}
-                      {m.status !== 'complete' ? ' · 未完成' : ''}
-                    </small>
-                    <Markdown text={m.text || '等待回复…'} />
-                  </div>
-                ))
+                snapshot.messages.map((m: any) => {
+                  const job = snapshot.jobs.find((j: any) => j.id === m.requestId);
+                  const status =
+                    m.role === 'assistant' &&
+                    ['failed', 'cancelled', 'interrupted'].includes(job?.state)
+                      ? job.state
+                      : m.status;
+                  const stopped = ['failed', 'cancelled', 'interrupted'].includes(status);
+                  const notice =
+                    status === 'failed'
+                      ? (job?.error?.message ?? '回复失败，请重新发送')
+                      : status === 'cancelled'
+                        ? '回复已取消'
+                        : status === 'interrupted'
+                          ? '回复已中断，请重新发送'
+                          : job?.state === 'queued'
+                            ? '已排队，等待当前任务结束…'
+                            : '导师正在回复…';
+                  return (
+                    <div key={m.id} className={'message ' + m.role}>
+                      <small>
+                        {m.role === 'user' ? '你' : '导师'}
+                        {status !== 'complete' ? ' · ' + (states[status] ?? '回复中') : ''}
+                      </small>
+                      {m.text && <Markdown text={m.text} />}
+                      {(!m.text || stopped) && (
+                        <p role={stopped ? 'status' : undefined}>{notice}</p>
+                      )}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="chat-empty">
                   <span>✦</span>
