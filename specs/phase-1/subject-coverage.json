@@ -1,0 +1,585 @@
+{
+  "generatedAt": "2026-09-26T05:51:15.044Z",
+  "registeredTemplates": 48,
+  "subjectGroups": 22,
+  "completeTeachingPaths": 2,
+  "requiredTeachingPaths": 8,
+  "fullyBoundDemonstrations": 6,
+  "requiredBoundDemonstrations": 44,
+  "phase1Complete": false,
+  "subjects": [
+    {
+      "id": "S01",
+      "title": "小学数学",
+      "topics": "数轴、四则运算、分数/小数/百分数、比例、面积体积与简单统计",
+      "interaction": "分割与合并分数块、进退位步骤、拖动测量与单位换算",
+      "templates": [
+        {
+          "id": "math.fraction",
+          "version": 1,
+          "title": "分数与面积",
+          "examples": []
+        },
+        {
+          "id": "math.place_value",
+          "version": 1,
+          "title": "十进制与进位",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S02",
+      "title": "初高中代数与函数",
+      "topics": "方程/不等式、函数、数列、三角函数、复数、解析几何",
+      "interaction": "参数联动曲线、方程变形步骤、复平面旋转",
+      "templates": [
+        {
+          "id": "math.quadratic",
+          "version": 1,
+          "title": "二次函数参数",
+          "examples": []
+        },
+        {
+          "id": "math.geometric_sequence",
+          "version": 1,
+          "title": "等比数列逐项生成",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S03",
+      "title": "平面与立体几何",
+      "topics": "三角形、圆、相似/全等、圆锥曲线、多面体、截面、空间向量",
+      "interaction": "拖动构造、添加辅助线、三维旋转、截面位置变化",
+      "templates": [
+        {
+          "id": "math.right_triangle",
+          "version": 1,
+          "title": "直角三角形",
+          "examples": [
+            {
+              "pathId": "geometry",
+              "title": "直角三角形的面积",
+              "templateId": "math.right_triangle",
+              "templateVersion": 1,
+              "reference": "勾股定理：3² + 4² = 5²；面积为 6。",
+              "families": 3
+            },
+            {
+              "pathId": "geometry",
+              "title": "从两条直角边求斜边",
+              "templateId": "math.right_triangle",
+              "templateVersion": 1,
+              "reference": "勾股定理：3² + 4² = 5²；面积为 6。",
+              "families": 3
+            },
+            {
+              "pathId": "geometry",
+              "title": "长度与面积如何缩放",
+              "templateId": "math.right_triangle",
+              "templateVersion": 1,
+              "reference": "勾股定理：3² + 4² = 5²；面积为 6。",
+              "families": 3
+            }
+          ]
+        },
+        {
+          "id": "math.circle",
+          "version": 1,
+          "title": "圆的周长与面积",
+          "examples": []
+        },
+        {
+          "id": "scene.cube_section",
+          "version": 1,
+          "title": "立方体的平面截面",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S04",
+      "title": "高等数学与数学分析",
+      "topics": "极限、导数、积分、级数、多元函数、梯度/散度/旋度、常微分方程；偏微分方程基础现象",
+      "interaction": "割线趋近切线、黎曼和、曲面切平面、方向场、低分辨率热/波动演示",
+      "templates": [
+        {
+          "id": "calculus.riemann",
+          "version": 1,
+          "title": "黎曼和",
+          "examples": []
+        },
+        {
+          "id": "calculus.secant",
+          "version": 1,
+          "title": "割线趋近切线",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S05",
+      "title": "线性代数",
+      "topics": "向量、矩阵、线性方程组、行列式、特征值、正交投影、SVD",
+      "interaction": "矩阵单步消元、二维/三维基变换、主方向与低秩重建",
+      "templates": [
+        {
+          "id": "matrix.determinant2",
+          "version": 1,
+          "title": "二维变换与行列式",
+          "examples": []
+        },
+        {
+          "id": "matrix.elimination2",
+          "version": 1,
+          "title": "高斯消元两步",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S06",
+      "title": "概率统计",
+      "topics": "排列组合、条件概率、常见分布、大数/中心极限定理、估计检验、回归",
+      "interaction": "可复现抽样、概率树、置信区间、拒绝域和拟合联动",
+      "templates": [
+        {
+          "id": "statistics.binomial",
+          "version": 1,
+          "title": "二项分布",
+          "examples": []
+        },
+        {
+          "id": "statistics.sample_means",
+          "version": 1,
+          "title": "样本均值与中心极限定理",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S07",
+      "title": "离散数学、数值方法与优化",
+      "topics": "集合/逻辑、图论、递推、数值求根/积分、线性规划、梯度法",
+      "interaction": "真值表、图遍历、二分/牛顿迭代、可行域与目标函数移动",
+      "templates": [
+        {
+          "id": "calculus.newton",
+          "version": 1,
+          "title": "牛顿法求平方根",
+          "examples": []
+        },
+        {
+          "id": "logic.truth_table",
+          "version": 1,
+          "title": "逻辑与、或和蕴涵",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S08",
+      "title": "中学及大学力学",
+      "topics": "运动学、受力、动量能量、转动、振动、基础流体",
+      "interaction": "抛体、碰撞、摆、弹簧、刚体转动、连续性/伯努利的理想模型",
+      "templates": [
+        {
+          "id": "physics.projectile",
+          "version": 1,
+          "title": "抛体运动",
+          "examples": [
+            {
+              "pathId": "mechanics",
+              "title": "抛体运动的射程",
+              "templateId": "physics.projectile",
+              "templateVersion": 1,
+              "reference": "射程 v² sin(2θ)/g。",
+              "families": 3
+            }
+          ]
+        },
+        {
+          "id": "physics.spring",
+          "version": 1,
+          "title": "理想弹簧与能量交换",
+          "examples": [
+            {
+              "pathId": "mechanics",
+              "title": "弹簧如何储存能量",
+              "templateId": "physics.spring",
+              "templateVersion": 1,
+              "reference": "ω=√(k/m)，总能量为kA²/2。",
+              "families": 3
+            },
+            {
+              "pathId": "mechanics",
+              "title": "简谐振动的周期",
+              "templateId": "physics.spring",
+              "templateVersion": 1,
+              "reference": "ω=√(k/m)，总能量为kA²/2。",
+              "families": 3
+            }
+          ]
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S09",
+      "title": "电磁学、波动与光学",
+      "topics": "电磁场、直流/交流基础、RC/RLC、几何光学、干涉衍射、偏振",
+      "interaction": "场矢量与等势线、修改电路参数、光线路径、波形叠加和条纹变化",
+      "templates": [
+        {
+          "id": "circuit.rc",
+          "version": 1,
+          "title": "RC 充电",
+          "examples": []
+        },
+        {
+          "id": "optics.interference",
+          "version": 1,
+          "title": "双缝干涉强度",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S10",
+      "title": "热学与统计物理",
+      "topics": "气体状态、热力学过程/循环、熵、热传导、粒子分布",
+      "interaction": "PV 图联动、热机过程逐步播放、理想粒子统计与扩散",
+      "templates": [
+        {
+          "id": "physics.ideal_gas",
+          "version": 1,
+          "title": "理想气体等温过程",
+          "examples": []
+        },
+        {
+          "id": "physics.diffusion",
+          "version": 1,
+          "title": "一维扩散逐步演化",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S11",
+      "title": "近代物理与天体基础",
+      "topics": "狭义相对论、光电效应、势阱/隧穿、量子态与能级、轨道运动",
+      "interaction": "时空图、能级跃迁、解析概率密度、简化轨道；明确模型假设",
+      "templates": [
+        {
+          "id": "physics.relativity",
+          "version": 1,
+          "title": "时间膨胀",
+          "examples": []
+        },
+        {
+          "id": "physics.square_well",
+          "version": 1,
+          "title": "无限深势阱概率密度",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S12",
+      "title": "无机、分析与物理化学",
+      "topics": "元素周期性、计量/配平、酸碱滴定、平衡、反应速率、电化学",
+      "interaction": "元素表关联、守恒配平步骤、滴定/速率曲线、平衡参数和电池示意",
+      "templates": [
+        {
+          "id": "chemistry.decay",
+          "version": 1,
+          "title": "一级反应速率",
+          "examples": []
+        },
+        {
+          "id": "chemistry.titration",
+          "version": 1,
+          "title": "强酸强碱滴定",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S13",
+      "title": "有机化学与分子结构",
+      "topics": "官能团、结构式、异构/手性、构象、键角、反应机理示意",
+      "interaction": "SMILES 二维骨架、已具坐标的三维球棍/空间填充、选原子与旋转构象",
+      "templates": [
+        {
+          "id": "molecule.bond_angle",
+          "version": 1,
+          "title": "四面体键角",
+          "examples": []
+        },
+        {
+          "id": "molecule.ethane_torsion",
+          "version": 1,
+          "title": "乙烷扭转势能示意",
+          "examples": []
+        },
+        {
+          "id": "molecule.methane",
+          "version": 1,
+          "title": "甲烷的理想四面体结构",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S14",
+      "title": "细胞、遗传与分子生物学",
+      "topics": "细胞/细胞器、膜运输、有丝/减数分裂、遗传规律、DNA/RNA/蛋白合成",
+      "interaction": "分层标注、阶段播放、遗传概率、序列对应与蛋白结构浏览",
+      "templates": [
+        {
+          "id": "biology.mendel",
+          "version": 1,
+          "title": "单基因杂交概率",
+          "examples": []
+        },
+        {
+          "id": "biology.transcription",
+          "version": 1,
+          "title": "DNA 模板链转录",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S15",
+      "title": "生理、生化、生态与进化",
+      "topics": "代谢通路、酶动力学、主要生理系统、食物网、种群与进化",
+      "interaction": "通路高亮、器官/组织示意、米氏曲线、种群模型与系统树",
+      "templates": [
+        {
+          "id": "biology.michaelis_menten",
+          "version": 1,
+          "title": "酶动力学",
+          "examples": []
+        },
+        {
+          "id": "biology.logistic",
+          "version": 1,
+          "title": "受限种群增长",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S16",
+      "title": "编程、算法与数据结构",
+      "topics": "程序执行、递归、排序/搜索、树/图、哈希、动态规划、复杂度",
+      "interaction": "变量/调用栈逐步跟踪、数据结构动画、修改小段 JS/Python 并运行",
+      "templates": [
+        {
+          "id": "algorithm.bubble_sort",
+          "version": 1,
+          "title": "冒泡排序逐步比较",
+          "examples": []
+        },
+        {
+          "id": "algorithm.binary_search",
+          "version": 1,
+          "title": "二分查找",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S17",
+      "title": "计算机体系、操作系统、网络与数据库",
+      "topics": "逻辑门/CPU 流水线、缓存/内存、调度/分页、协议与路由、SQL/索引/事务",
+      "interaction": "状态机、时序与报文动画、调度比较、隔离的 SQLite 查询和执行过程",
+      "templates": [
+        {
+          "id": "systems.round_robin",
+          "version": 1,
+          "title": "时间片轮转调度",
+          "examples": []
+        },
+        {
+          "id": "systems.lru",
+          "version": 1,
+          "title": "LRU 页面替换",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S18",
+      "title": "机器学习",
+      "topics": "数据划分/预处理、线性/逻辑回归、kNN、决策树、朴素贝叶斯、SVM、聚类、PCA、评价与过拟合",
+      "interaction": "小数据集训练、决策边界、损失曲线、混淆矩阵、超参数对比；显示训练/验证集区别",
+      "templates": [
+        {
+          "id": "ml.linear_regression",
+          "version": 1,
+          "title": "梯度下降拟合直线",
+          "examples": []
+        },
+        {
+          "id": "ml.kmeans",
+          "version": 1,
+          "title": "一维 k-means 迭代",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S19",
+      "title": "深度学习",
+      "topics": "张量形状、自动微分/反向传播、小型 MLP、CNN 卷积/池化、RNN、嵌入、Attention/Transformer 原理",
+      "interaction": "前向/梯度单步、手算卷积核、小网络训练、注意力热图和掩码变化",
+      "templates": [
+        {
+          "id": "neural.sigmoid",
+          "version": 1,
+          "title": "单神经元前向与梯度",
+          "examples": []
+        },
+        {
+          "id": "neural.attention",
+          "version": 1,
+          "title": "注意力归一化与掩码",
+          "examples": []
+        },
+        {
+          "id": "neural.convolution",
+          "version": 1,
+          "title": "二维卷积单步",
+          "examples": []
+        },
+        {
+          "id": "neural.rnn",
+          "version": 1,
+          "title": "循环神经元状态递推",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S20",
+      "title": "工程、电子、控制与信号",
+      "topics": "基础结构受力、电子元件、反馈/PID、时频分析、采样/混叠、滤波",
+      "interaction": "简化结构图、元件曲线、阶跃响应、FFT 与滤波参数联动",
+      "templates": [
+        {
+          "id": "control.pid",
+          "version": 1,
+          "title": "一阶对象的 PID 控制",
+          "examples": []
+        },
+        {
+          "id": "signal.aliasing",
+          "version": 1,
+          "title": "采样与混叠",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S21",
+      "title": "地球、地理、环境与空间科学",
+      "topics": "地形/地层、板块与水循环、气候基础、太阳系/季节、环境数据",
+      "interaction": "地图图层、剖面、过程流程、天体相对位置与时间序列",
+      "templates": [
+        {
+          "id": "earth.seasons",
+          "version": 1,
+          "title": "太阳赤纬与季节",
+          "examples": []
+        },
+        {
+          "id": "earth.radiative_balance",
+          "version": 1,
+          "title": "行星辐射平衡",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S22",
+      "title": "经济与其他知识领域",
+      "topics": "供需、边际与博弈基础；历史时间线、语言结构、论证关系等通用教程表达",
+      "interaction": "曲线、收益矩阵、可筛选时间线/地图、关系图与逐段注释",
+      "templates": [
+        {
+          "id": "economics.supply_demand",
+          "version": 1,
+          "title": "供需均衡",
+          "examples": []
+        },
+        {
+          "id": "economics.prisoner",
+          "version": 1,
+          "title": "囚徒困境与收益",
+          "examples": []
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
+    }
+  ],
+  "paths": [
+    {
+      "id": "geometry",
+      "subject": "数学",
+      "nodes": 3,
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "mechanics",
+      "subject": "力学",
+      "nodes": 3,
+      "scientificHumanReview": "pending"
+    }
+  ]
+}

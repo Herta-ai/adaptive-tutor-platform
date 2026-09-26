@@ -1,0 +1,55 @@
+{
+  "name": "adaptive-tutor-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "runtimes:build": "tsx scripts/build-runtimes.ts",
+    "runtimes:prepare": "tsx scripts/build-runtimes.ts --numpy",
+    "dev": "tsx src/server/main.ts --dev",
+    "build": "tsx scripts/build-runtimes.ts && next build --webpack && tsc --project tsconfig.server.json",
+    "start": "node dist/server/main.js",
+    "mcp": "tsx src/mcp/stdio.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "verify:coverage": "tsx scripts/coverage.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "@tensorflow/tfjs": "4.22.0",
+    "katex": "0.16.22",
+    "next": "16.2.0",
+    "pyodide": "0.28.3",
+    "quickjs-emscripten": "0.31.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-markdown": "10.1.0",
+    "rehype-katex": "7.0.1",
+    "remark-math": "6.0.0",
+    "sql.js": "1.13.0",
+    "three": "0.180.0",
+    "yauzl": "3.2.0",
+    "yazl": "3.3.1",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@types/node": "24.10.0",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "@types/sql.js": "1.4.9",
+    "@types/three": "0.180.0",
+    "@types/yauzl": "2.10.3",
+    "@types/yazl": "3.3.0",
+    "esbuild": "0.25.12",
+    "prettier": "3.6.2",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
+  }
+}

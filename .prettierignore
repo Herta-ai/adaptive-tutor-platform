@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+.next/
+dist/
+.runtime-build/
+node_modules/
+test-results/
+docs/
