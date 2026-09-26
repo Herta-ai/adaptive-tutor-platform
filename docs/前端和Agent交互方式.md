@@ -1,12 +1,12 @@
 # 前端与 Antigravity CLI 交互：一期技术设计
 
-版本：0.3 · 更新日期：2026-09-26 · 状态：一期全学科演示设计基线；CLI 最小接入已实测，应用与演示引擎尚未实现
+版本：0.4 · 更新日期：2026-09-26 · 状态：一期全学科演示与 MCP 设计基线；CLI 最小接入已实测，应用与 MCP 服务尚未实现
 
 产品范围与教学判定以 [PRD](PRD.md) 为准。本文是实现契约，示例中的应用类型、HTTP 路由和事件不是 CLI 原生协议。实现时应把这些定义落到共享 Schema、数据库迁移和测试夹具中。
 
 ## 1. 架构决定
 
-采用 **Next.js 本地界面 + 常驻 Node.js 应用服务 + 按任务启动 `agy` 非交互子进程 + HTTP 命令/SSE 事件 + SQLite**。全学科演示在这个架构上增加**声明式组件注册表、可信数值内核和浏览器隔离计算环境**；不把科学演示计算转交给 CLI，也不为新增学科接入其他 Agent。
+采用 **Next.js 本地界面 + 常驻 Node.js 应用服务 + 按任务启动 `agy` 非交互子进程 + HTTP 命令/SSE 事件 + 课程读写 MCP 适配器 + SQLite**。课程数据统一保存在 `~/.herta-ai/adaptive-tutor-platform/`。全学科演示在这个架构上增加**声明式组件注册表、可信数值内核和浏览器隔离计算环境**；不把科学演示计算转交给 CLI，也不为新增学科接入其他 Agent。
 
 ```text
 本机浏览器
@@ -19,11 +19,15 @@
   ├─ Next.js 请求处理器：页面与静态资源
   ├─ 会话鉴权、输入校验、幂等、任务队列
   ├─ 教学规则 / 课程服务 / 内容校验 / 导入导出
+  ├─ 内部课程网关：接收本地 MCP 适配器的受控调用
   ├─ SQLite：内容版本、学习状态、消息、任务、事件
   └─ AntigravityAdapter
        └─ spawn agy：参数数组 + stdout NDJSON + 独立 stderr
                       │
                 用户自己的 CLI 登录与模型服务
+                      │ MCP tools（STDIO）
+                本应用 MCP 薄适配器
+                      └─ 经鉴权的回环请求 → 同一个课程服务与 SQLite
 ```
 
 ### 1.1 为什么这样选择
@@ -35,9 +39,9 @@
 | 常驻应用服务 | 保留队列、数据库、浏览器连接和任务监督；并不要求 CLI 常驻 |
 | HTTP + SSE | 提交、取消用 HTTP，服务端事件单向流出，足以覆盖一期；SSE 是 HTTP 流，不是 WebSocket |
 | SQLite 单一状态源 | CLI 内存与聊天摘要都不能替代课程和作答记录 |
-| 暂不引入 MCP | 一期通过结构化输出提出变更，由应用服务执行，不需要 Agent 自行调用写数据库工具 |
+| 一期提供 MCP 薄适配器 | CLI 通过工具读取课程上下文、保存生成草稿；课程服务执行校验和最终提交，MCP 不直接操作数据库或创建第二套存储 |
 
-不采用 PTY、`strip-ansi` 抓屏、模拟键盘回车或 Agent 死循环轮询。一次性进程也能流式与续聊；这些能力取决于 CLI 协议而非进程是否常驻。以后若接入 MCP，只作为同一领域服务的受控适配层，不形成第二份状态或绕过校验。
+不采用 PTY、`strip-ansi` 抓屏、模拟键盘回车或 Agent 死循环轮询。一次性进程也能流式与续聊；这些能力取决于 CLI 协议而非进程是否常驻。MCP 用于课程读写，CLI 结构化输出用于任务完成回执，HTTP/SSE 用于前端通信，三者职责独立。
 
 技术基线：Node.js 24 LTS、TypeScript、稳定版 Next.js App Router、React、Tailwind/shadcn/ui、Zod、SQLite（例如 `better-sqlite3`）。渲染使用 KaTeX/mhchem、受控 SVG/JSXGraph、ECharts、Three.js/React Three Fiber、SmilesDrawer/3Dmol、Cytoscape；数值与小模型使用可信固定算法和 TensorFlow.js；代码实验使用 QuickJS-WASM、Pyodide 和 sql.js。具体版本在 M1 原型验证后写入 lockfile/运行库清单，按需加载，不全部塞入首屏。Zustand 只保存界面状态；服务器快照是课程状态依据。
 
@@ -81,11 +85,11 @@ agy --print <固定教学指令与JSON任务封装>
 
 - 可执行路径从 PATH 检测或由用户选择，解析为绝对路径；不硬编码用户安装目录，不执行来自课程包的命令。
 - Windows 使用 `spawn(executable, args, { shell: false, windowsHide: true, cwd, stdio: ['ignore', 'pipe', 'pipe'] })`，由监督器管理退出和取消。
-- `cwd` 是应用专用的任务目录，只放当前需要的 Schema 等文件，不设为用户项目、下载目录或课程包解压目录。数据库不放在该目录内。
+- `cwd` 固定为数据根目录下的 `jobs/<requestId>/<runId>/`，只放当前需要的 Schema 等文件，不设为用户项目、下载目录或课程包解压目录。数据库不放在该任务目录内；课程位置不能依据 CLI 的 cwd 推导。
 - 不传 `--dangerously-skip-permissions`，不修改 CLI 全局配置，不把 API key 注入环境来替代用户登录。沿用用户正常运行 CLI 所需环境，日志不打印环境变量。
 - 不同时传 `--disable-slash-commands` 与 `--mode plan`；实际警告说明不能依赖此组合。输入固定以应用指令前缀和 JSON 封装开始，用户输入作为数据，不直接作为 slash command。
 - `--sandbox` 和 `--mode plan` **不能被本应用宣称为操作系统级隔离或全部工具禁用**。实测权限字段仍可为 `always-proceed`。产品沿用用户配置的 CLI 权限，设置页如实展示；提示词里的“不要使用工具”不是安全边界。
-- 一期不要求 CLI 搜索、执行命令或修改文件，所有教学变更在应用内执行。若任务进入需交互授权状态且适配器无法安全处理，则结束为 `CLI_INTERACTION_REQUIRED`，引导用户在自己的 CLI 中处理；不自动回车同意或跳过权限。
+- 一期仅向 CLI 提供受控的课程 MCP 工具，不要求它通过 shell 或任意文件写入修改课程；所有教学变更在应用课程服务中执行。若任务进入需交互授权状态且适配器无法安全处理，则结束为 `CLI_INTERACTION_REQUIRED`，引导用户在自己的 CLI 中处理；不自动回车同意或跳过权限。
 - `--input-format stream-json` 在帮助中存在，但其输入消息结构尚未实测，一期不依赖该模式。未来常驻优化需独立验证。
 - Windows 参数总长度含转义后须少于 24,000 UTF-16 单元。应用指令、上下文和问题超过预算时按第 9 节裁剪，不悄悄改用 shell 或不明输入协议。
 
@@ -119,9 +123,77 @@ agy --print <固定教学指令与JSON任务封装>
 4. `step_update.state=DONE` 只表示一个步骤结束，绝不是整个回复结束。
 5. 必须收到 `result.status=SUCCESS`，并等到子进程以 0 退出，才有成功候选。缺少 result、非零退出或未知状态均不得发布内容；result 后 5 秒仍不退出则回收本任务进程并报协议异常。
 6. 普通聊天以最终 `result.response` 替换对应消息的预览，不能再次追加最终全文。保留实际 Markdown，而非终端控制字符。
-7. 课程、大纲、题目、诊断等任务只读取 `result.structured_output`，再做本地严格校验；不从 `response` 里用正则“捞 JSON”，不渲染中间结构化输出。
+7. 课程、大纲、题目、诊断等任务通过 MCP 保存候选草稿；最终只读取 `result.structured_output` 中的 `GenerationReceipt`，再验证并提交对应草稿。普通 JSON Schema 探针仍可返回其自身测试对象；不从 `response` 里用正则“捞 JSON”，不渲染中间结构化输出。
 8. CLI 的新增未知事件可记录类型后忽略；已知事件缺字段、无可识别终态或非 JSON stdout 是协议错误。stderr 单独限长、脱敏，不混入聊天流。
 9. 以应用单调时钟记录 `spawn → firstDelta → processExit`；CLI 原生用量仅作为未校准的诊断信息，不冒充费用或本轮独立消耗。
+
+### 2.4 一期课程 MCP 接口
+
+#### 接入方式与验证状态
+
+采用官方 MCP SDK 的 STDIO 服务作为薄适配器：Antigravity CLI 是 MCP client，适配器将工具调用转发到同一 Node 应用服务的受控回环网关。适配器不直接打开 SQLite、不按自己的 cwd 写课程，也不提供任意文件读写工具。浏览器仍使用 HTTP/SSE，不直接连接 MCP。
+
+2026-09-26 本机帮助查询确认：`agy mcp add` 支持 `--type stdio|http`、command/args、环境变量和 HTTP header；参数标志需位于服务名之前。尚未注册本应用 MCP、启动课程 MCP 服务或实测工具调用，不把帮助查询当成联调通过。
+
+安装完成后的配置形态如下，路径是占位符，不是当前仓库已经存在的程序：
+
+```text
+agy mcp add --type stdio adaptive-tutor <Node可执行文件绝对路径> <应用安装目录中的mcp-stdio.js绝对路径>
+```
+
+由用户在设置流程中完成/确认注册；路径含空格时按所在 shell 的规则分别引用，不使用 `npx` 临时下载未知包。CLI 帮助没有证明项目级配置作用域，因此应用不得假装此配置只影响当前项目，也不自动覆盖用户已有的同名 MCP 项。M0 验证注册作用域、进程复用行为与中文/空格路径后给出准确安装说明。
+
+适配器通过共享目录定位模块读取 `runtime/` 中的活动服务地址和私有 MCP 网关凭证，验证回环地址和服务身份后连接。服务未启动则返回 `APP_NOT_RUNNING`，不能自建另一个数据库。STDIO stdout 只输出 MCP 协议消息，诊断走独立 stderr/受控日志。
+
+#### 调用范围与工具契约
+
+每次应用发起的 CLI run 都由服务端创建 `mcpScopeId`，绑定 requestId、runId、courseId、允许的节点/操作和过期时间；只把这个操作范围标识交给当前任务。scopeId **不是认证凭证**，实际客户端认证使用私有网关凭证。读写工具既检查客户端身份，又检查 scope 对应任务仍有效；会话复用不能扩大新任务的范围。
+
+聊天 scope 只允许读取相关课程；生成/诊断 scope 可写对应类型草稿。即使用户把该 MCP 配置到其他 CLI 会话，无有效应用任务范围也不能任意读写课程。实际 CLI 如何发起/复用工具进程在 M0 验证，设计不依赖临时环境变量一定能穿透 CLI 的共享后台进程。
+
+| MCP 工具 | 输入 | 结果与限制 |
+| --- | --- | --- |
+| `get_curriculum` | scopeId、可选 revision | 返回 scope 所属课程目标、节点、依赖、相关掌握摘要；不接受任意课程路径 |
+| `get_node_content` | scopeId、nodeId、可选 lessonVersion/blockId/cursor | 返回范围内已发布正文与演示配置；不含未揭示答案键，长内容分页/切片 |
+| `get_assessment_context` | scopeId、attemptIds | 仅诊断任务可读允许的已提交作答、对应题目和判分依据；不能伪造或新增作答 |
+| `list_course_assets` | scopeId、可选 cursor/filter | 返回本课程已验证 assetId、类型和摘要，不返回任意主机文件路径 |
+| `save_generation_draft` | scopeId、operationId、kind、payload | 使用第 5 节草稿 Schema 校验并保存 staged 记录，返回 draftId、kind、contentHash；只写任务允许的候选结果 |
+
+`kind` 为 `plan_course / generate_lesson / generate_exercises / diagnose / revise_lesson`。工具从 scope 推导课程、任务和版本，不相信 payload 自报的归属。读取每页最多 20 项/8,000 字符，超限给出游标，不静默截断；单次写入 payload 上限 1 MiB，并应用更细的内容限制。所有工具错误以 MCP 错误结果返回稳定 code/message，不将错误当成功文本。
+
+幂等键为 `(runId, operationId)`：相同内容返回原 draftId，异文返回 `IDEMPOTENCY_CONFLICT`。跨课程/超出工具权限返回 `SCOPE_DENIED`，过期或终态任务返回 `SCOPE_EXPIRED`，服务端版本变化返回 `VERSION_CONFLICT`。scope 状态检查与草稿写入处于同一事务，取消后的晚到工具调用不能继续写候选结果。
+
+不暴露 `set_mastery`、任意 SQL、任意路径写入、直接发布课程图或直接执行补丁工具。补丁建议仍在 DiagnosisDraft 中表达，经第 8 节规则提交。MCP 写调用只进行校验/保存，**不能启动 CLI 生成任务或等待外层任务结束**，避免全局并发为 1 时发生嵌套等待。
+
+#### 草稿与完成回执
+
+```text
+前端创建任务和 scope
+  -> CLI 用 MCP 读取必要上下文
+  -> CLI 用 save_generation_draft 保存候选内容到统一数据目录
+  -> MCP 返回 draftId / kind / contentHash
+  -> CLI 在最终 structured_output 返回 GenerationReceipt
+  -> 应用验证成功终态、退出码、scope/草稿归属、版本与业务规则
+  -> 发布初次节点/补题/诊断结果，或将大纲/重写草稿标为 pending 等待用户确认
+```
+
+`GenerationReceipt v1` 的 CLI JSON Schema 只接受下面的字段；其 kind 必须与本任务相同，contentHash 由服务端对已保存的规范化 payload 计算，模型应原样回传：
+
+```json
+{
+  "schemaVersion": "1.0",
+  "delivery": "mcp_draft",
+  "kind": "generate_lesson",
+  "draftId": "draft-example",
+  "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}
+```
+
+上例哈希是格式占位值；真实回执必须匹配数据库中已保存草稿。仅调用 MCP 成功不代表课程生成成功；缺少有效最终回执、CLI 失败/取消、错误 scope 或草稿 hash 不匹配时均不发布。候选保留为可审计/可清理的草稿，不成为学生可见的正式内容。
+
+同一 run 可因校验错误保存新的候选，但仅最终回执引用的草稿可以提交；旧候选不能被另一任务借用。一次结构修复属于原 request 的新 run，创建新 scope 并撤销旧 scope。发布/进度事件仍由应用事务发出，而非适配器直接广播。
+
+MCP 不可用时返回 `MCP_UNAVAILABLE` 并保留已有课程；一期不静默退回任意文件写入或另一套内容存储协议。只读离线学习不要求 MCP 正常运行。
 
 ## 3. 应用会话、任务与进程生命周期
 
@@ -161,11 +233,43 @@ queued -> running -> validating -> completed
 
 ### 4.1 通用约定
 
-- 本地数据目录默认 `%LOCALAPPDATA%/AdaptiveTutor/`，包含 `tutor.sqlite`、`assets/`、`jobs/`、`logs/`；不使用仓库文件作为运行数据。
+- 统一数据根目录为 `~/.herta-ai/adaptive-tutor-platform/`，由 `path.join(os.homedir(), '.herta-ai', 'adaptive-tutor-platform')` 定位。主应用和 MCP 适配器共用同一定位模块；不能使用 `process.cwd()`、代码仓库路径或字面量 `~`，不继续使用旧设计的 `%LOCALAPPDATA%/AdaptiveTutor/`。
 - 启用 SQLite 外键、WAL 和短事务；数据库 schema 版本通过 migration 管理，迁移前做一致性备份。
 - 时间是 UTC ISO 8601；业务 ID 是应用生成 UUID。Agent 提案使用局部 key，提交时映射为正式 ID，不能任意指定全局主键。
 - `courseRevision`、`lessonVersion`、`exerciseVersion` 是正整数；内容版本不可原地改写。写请求带目标版本，冲突返回 409。
 - 所有请求严格校验对象结构、字符串长度、有限数值、枚举及跨对象引用。JSON Schema 合格不代表业务合法。
+
+#### 4.1.1 目录布局与数据归属
+
+```text
+~/.herta-ai/adaptive-tutor-platform/
+  tutor.sqlite             # 课程/草稿/学习状态/历史/消息/事件，唯一结构化状态源
+  tutor.sqlite-wal / -shm   # SQLite 自己管理，不单独清理
+  assets/                  # 持久资源：图片、模型、分子、数据集、快照产物，按内容哈希管理
+  jobs/<requestId>/<runId>/ # CLI 工作目录、Schema、必要任务暂存
+  imports/<importId>/      # 课程包验证暂存，未提交不能成为可见课程
+  exports/                 # 应用生成的导出包；用户可显式另存为到其他目录
+  backups/<backupId>/      # 一致性数据库备份与所需资源/校验清单
+  cache/runtimes/          # 固定版本运行库/WASM，可校验后重新获取
+  logs/                    # 限长、限时、脱敏诊断日志
+  runtime/                 # 本机实例锁、服务发现和 MCP 连接信息；不进入课程导出
+```
+
+`tutor.sqlite` 保存课程正文 JSON 和题库，不另外在工作树维护可写的课程 Markdown/JSON 副本；导出时才从已发布版本生成文件。assets 是持久数据，不能因名字像“缓存”就删除；可重新下载不代表用户导入资源总能重新取得。
+
+在本机，Node 解析出的目录是 `C:\Users\wyate\.herta-ai\adaptive-tutor-platform\`（仅为当前用户示例，禁止硬编码）。其他用户使用自己的主目录。即使从不同盘符或代码检出目录启动，也应得到同一用户的数据目录；一期不提供容易造成两套数据库的自动 cwd/env 回退。
+
+远程代码仓库为 `https://github.com/Herta-ai/adaptive-tutor-platform.git`。其中只保存代码、文档、迁移与脱敏测试夹具；个人课程、运行数据、备份和连接凭证不提交 Git。CI/自动测试使用显式创建的隔离测试目录，不能写入真实用户数据根；该测试入口不作为生产环境静默切换路径的机制。
+
+#### 4.1.2 创建、访问与迁移
+
+- 首次启动由应用服务按需创建并检查目录权限/可写性；磁盘满、无权限和数据库版本不兼容应明确失败，禁止回退到仓库或系统临时目录保存课程。
+- 根目录下的资源路径在数据库中保存为 assetId/受控相对路径。写入时规范化并检查最终落点仍在该根目录内，防止 `..`、绝对路径或符号链接/目录联接绕过；课程标题不用于直接拼接文件路径。
+- 同一数据根只允许一个应用服务拥有写实例锁。第二次启动连接现有服务或报告已运行；多个 MCP 适配器是同一服务的客户端，不各自打开 SQLite 写入。服务发现文件不能代替活动性/身份验证，也不能仅凭旧 PID 就杀进程。
+- runtime 中 MCP 连接凭证仅授权当前 OS 用户读取（Windows 用户 ACL，POSIX 对应用户权限），随服务启动轮换，不写入仓库、课程包、普通日志或模型提示。普通浏览器 token 与 MCP 网关 token 不共用。
+- 缓存/任务清理只操作已确认不在使用的子目录，禁止递归删除 `.herta-ai` 父目录；其他 Herta 应用的数据不属于本应用。
+- 旧 `%LOCALAPPDATA%/AdaptiveTutor/` 仅是此前文档方案，不表示已经存在或需要自动迁移。若将来检测到旧数据，先停写、做含必要资源的一致性备份，再显式迁移并验证；不自动合并两个已有数据库，也不在本次文档修改中创建或迁移数据。
+- 备份必须能够找回其引用资源，不能仅保存数据库后又把被引用 assets 回收；恢复时检查版本和资源哈希。缓存清理不得触碰备份，用户删除课程时应说明独立备份仍可保留历史数据。
 
 ### 4.2 核心实体
 
@@ -176,7 +280,7 @@ queued -> running -> validating -> completed
 | `nodes` | id、courseId、conceptId、title、kind(main/remedial)、objectives、estimatedMinutes、contentStatus(not_generated/generating/ready/error)、currentLessonVersion；每节点 1～3 个带 id 的目标，有旧发布版本时重生成失败仍保持 ready |
 | `edges` | id、courseId、fromNodeId、toNodeId、kind(prerequisite/remediation)、patchId?、active；方向始终是先修 → 后续 |
 | `lessons` | nodeId、version、documentJson、status(draft/published/invalid)、generatedBy、createdAt；联合主键 |
-| `drafts` | id、requestId、courseId、nodeId?、kind、baseRevision、payload、status(pending/published/rejected/stale)；保存待确认大纲和重写结果 |
+| `drafts` | id、requestId、runId、courseId、nodeId?、kind、baseRevision、payload、contentHash、operationId、status(staged/pending/published/applied/rejected/stale)；MCP 候选为 staged，校验完成的大纲/重写为 pending，其余按发布/应用结果流转 |
 | `exercises` | id、version、nodeId、objectiveId、familyId、prompt、answerSchema、grading、explanation、status；答案规则只在服务端普通查询之外保存 |
 | `learning_cycles` | id、nodeId、remediationEpochId、kind(initial/verification/review)、status、startedAt、completedAt?；每节点一个当前轮 |
 | `assignments` | id、cycleId、exerciseId/version、eligibleForEvidence、issuedAt、hintRevealedAt?、solutionRevealedAt?；历史已用家族的复练标记为不贡献证据，提示暴露由服务端写入 |
@@ -188,6 +292,7 @@ queued -> running -> validating -> completed
 | `messages` | id、sessionId、requestId、role、text、status、contextSnapshotId?、createdAt；以 messageId 更新，绝不按数组最后一条猜归属 |
 | `context_snapshots` | id、courseId、nodeId、lessonVersion、blockId?、selection?、componentState?、createdAt；保存发送瞬间状态 |
 | `jobs` / `runs` | requestId、clientRequestId、payloadHash、kind、courseId、sessionId?、state、retryOf?；run 另存 CLI 版本、退出码、计时、修复次数 |
+| `mcp_scopes` | id、requestId、runId、courseId、allowedNodeIds、allowedTools、allowedKind、expiresAt、revokedAt?；范围由应用签发，scopeId 不充当客户端认证凭证 |
 | `events` | eventId（递增整数）、requestId、sequence、courseId、sessionId?、type、payload、createdAt；同一 request 的 sequence 唯一 |
 | `notes` / `assets` | notes 绑定节点及可选内容版本；assets 保存 id、hash、mime、size、受控相对路径、来源及再分发许可 |
 | `demo_snapshots` | id、courseId、nodeId、lessonVersion、blockId、templateId/version、stateSchemaVersion、parameters、seed?、step/time?、selectedIds、summary、artifactRefs、createdAt；只保存明确需要的可复现状态，不保存 Worker 内存或可执行运行库 |
@@ -207,9 +312,9 @@ queued -> running -> validating -> completed
 
 ### 5.1 统一校验方式
 
-应用维护 `contracts/v1` 的 Zod 定义，并从同一来源导出 JSON Schema 传给 CLI；所有对象默认拒绝未知业务字段。以下表格规定必须落地的字段和约束，不代表仅凭 TypeScript 类型就完成运行时验证。应用尚未发布，扩充本基线的 v1 块类型而不假定已存在旧版课程迁移；首次发布后新增不兼容字段必须走版本迁移。
+应用维护 `contracts/v1` 的 Zod 定义，并从同一来源导出 MCP 输入与草稿 JSON Schema；CLI 的最终输出约束使用 GenerationReceipt Schema，普通探针仍用对应测试 Schema。所有对象默认拒绝未知业务字段。以下表格规定必须落地的字段和约束，不代表仅凭 TypeScript 类型就完成运行时验证。应用尚未发布，扩充本基线的 v1 块类型而不假定已存在旧版课程迁移；首次发布后新增不兼容字段必须走版本迁移。
 
-结构化任务类型固定为 `plan_course / generate_lesson / generate_exercises / diagnose / revise_lesson`，每种类型只有一种输出 Schema。外层课程、版本、请求归属由应用补充，不能信任模型自行指定的 `courseId` 或进度。
+结构化任务类型固定为 `plan_course / generate_lesson / generate_exercises / diagnose / revise_lesson`，每种类型对应一个 MCP payload Schema，最终 CLI 回执引用已保存草稿。外层课程、版本、请求归属由应用补充，不能信任模型自行指定的 `courseId` 或进度。
 
 | 输出类型 | 模型应返回的字段 |
 | --- | --- |
@@ -296,7 +401,7 @@ Markdown 禁止原始 HTML、MDX、脚本链接和任意 iframe；资源只允�
 
 `Source` 包含 id、title、url?、status(verified/suggested)、accessedAt?、supportsBlockIds、license?。只有存在实际获取/人工核对记录时服务端才允许 verified；模型自报 verified 不被直接采纳。资源记录真实格式、hash、来源和是否允许再分发，禁止自动执行或加载远端资源。
 
-生成完成后按顺序执行：JSON Schema → 字段长度/枚举 → 引用与目标归属 → 图形模板/题目规则 → 版本冲突检查 → 内容草稿。初次生成的节点可在校验后发布；人工请求重写的内容须预览确认。失败允许一次携带精简校验错误的修复，仍失败则返回 `CONTENT_INVALID`，保留之前版本。
+MCP 保存候选前先验证 JSON Schema、字段长度/枚举、引用与目标归属、图形模板/题目规则。生成完成后再校验最终回执与草稿 hash/归属、任务状态和版本冲突，才允许发布初次节点；大纲和人工请求重写的内容须预览确认。失败允许一次携带精简校验错误的修复，仍失败则返回 `CONTENT_INVALID`，保留之前版本。CLI 中间输出与 MCP staged 草稿都不能直接作为正式 LessonDocument 下发。
 
 ### 5.5 全学科组件注册表与模板计划
 
@@ -632,7 +737,7 @@ Markdown 导出为几何/分子/三维场景生成静态图或多视图、算法
 
 - 单监听地址为 `127.0.0.1`，每次启动生成高熵临时会话秘密；不绑定 LAN，不开启通用 CORS。
 - 启动器通过 URL fragment 传一次性引导 token（256 位随机，5 分钟过期，一次消费）。页面读出后立即清除地址栏 fragment，经 `/bootstrap` 交换为 HttpOnly、SameSite=Strict 的本地会话 Cookie。token 不进 query、访问日志或持久化前端存储。
-- 校验 Host 为本次确切的回环主机与端口；有 Origin 的请求必须等于应用 origin。除 bootstrap 以单次 token 及来源校验完成引导外，所有写操作还需同源 CSRF 令牌；无合法本地会话的业务 API/SSE/课程资源请求均拒绝，公开页面壳不得含学习数据。
+- 校验 Host 为本次确切的回环主机与端口；有 Origin 的请求必须等于应用 origin。除 bootstrap 以单次 token 及来源校验完成引导外，浏览器写操作还需同源 CSRF 令牌；无合法本地会话的业务 API/SSE/课程资源请求均拒绝，公开页面壳不得含学习数据。MCP 使用单独的内部网关与私有凭证，不复用浏览器 Cookie/CSRF 或公开 API 权限。
 - 再次打开页面通过本地启动器生成新引导 token；已有同源标签页可共享浏览器会话。应用退出使会话失效。
 - GET 不执行状态变更；设置 CSP，脚本只来自本地构建产物，图片与连接限制到必要来源。不得允许任意网页连接 CLI 管道。
 
@@ -654,7 +759,7 @@ Markdown 导出为几何/分子/三维场景生成静态图或多视图、算法
 
 ## 12. 实现与验证清单
 
-建议模块划分：`contracts`（Schema）、`runtime/antigravity`（CLI）、`jobs`、`events`、`curriculum`、`assessment`、`content`、`storage`、`transfer`、`ui`，以及 `capabilities`（模板注册表）、`renderers`、`compute-kernels`、`demo-runtime`、`code-sandbox`、`assets`。领域规则不得藏在 React 组件、Prompt 或某个 CLI 适配器里。
+建议模块划分：`contracts`（Schema）、`runtime/antigravity`（CLI）、`mcp`（STDIO 薄适配器）、`data-root`（统一路径）、`jobs`、`events`、`curriculum`、`assessment`、`content`、`storage`、`transfer`、`ui`，以及 `capabilities`（模板注册表）、`renderers`、`compute-kernels`、`demo-runtime`、`code-sandbox`、`assets`。领域规则不得藏在 React 组件、Prompt 或某个 CLI/MCP 适配器里。
 
 | 验证层 | 必须覆盖 | 对应 PRD |
 | --- | --- | --- |
@@ -671,7 +776,9 @@ Markdown 导出为几何/分子/三维场景生成静态图或多视图、算法
 | 受限代码 | 三种语言真实运行、输入/输出/超时、Python 桥接、同源与网络访问阻断、无宿主 shell、显式启动与停止 | A17/A24 |
 | ML/DL | 训练/验证无泄漏、小模型训练、有限差分梯度、手算卷积、RNN 递推、注意力掩码/归一化；预计算标签与适用参数域 | A25 |
 | 全科性能与资源 | 30fps 场景、后台暂停/释放、无 WebGL 降级、分子/GLB/数据集离线往返、依赖缓存、恶意资源与未知模板拒绝 | A26～A28 |
+| 数据根与实例管理 | 不同 cwd/检出目录、中文/空格 home、权限/磁盘错误、单写实例、备份资源完整性、清缓存保留课程、Git 无个人数据 | A29 |
+| MCP 实际联调 | 注册/作用域、STDIO 协议、读取与保存、最终回执、重复/越界/版本冲突、取消晚到调用、无有效 scope、服务重启和避免嵌套生成 | A30 |
 
-M0 的真实样本应脱敏后保存为测试夹具，记录 CLI 版本、OS、调用参数和观察结果；不包含用户账号、绝对用户路径或凭证。M1 验证三维/分子/计算/代码隔离/小网络原型；M2～M4 按 PRD 覆盖学科，M5 完成 A01～A28，均属一期。只有具体的高成本能力符合 PRD 第 1.4 节并登记原因/替代方案时才可后置。
+M0 的真实样本应脱敏后保存为测试夹具，记录 CLI 版本、OS、调用参数和观察结果；不包含用户账号、绝对用户路径或凭证。M0 还须完成 MCP 注册与课程草稿联调；M1 验证统一数据根、三维/分子/计算/代码隔离/小网络原型；M2～M4 按 PRD 覆盖学科，M5 完成 A01～A30，均属一期。只有具体的高成本能力符合 PRD 第 1.4 节并登记原因/替代方案时才可后置。
 
-本项目目前仅完成第 2.1 节的 CLI 最小成功路径验证；新增全科模板与运行库是本次补齐的实现设计，尚未集成或实测，不能据此声称科学正确性、代码隔离或整个应用已经通过验收。
+本项目目前仅完成第 2.1 节的 CLI 最小成功路径验证与第 2.4 节所述 MCP 命令帮助查询；统一数据目录、课程 MCP、全科模板和运行库均为实现设计，尚未创建运行数据或完成集成验证，不能据此声称 MCP 课程读写、科学正确性、代码隔离或整个应用已经通过验收。
