@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync, writeFileSync, rmSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { AppError } from '../domain/errors.js';
@@ -38,7 +38,11 @@ export function acquireWriterLock(root: string): () => void {
       });
       renameSync(temporary, marker);
     } finally {
-      rmSync(temporary, { force: true });
+      try {
+        unlinkSync(temporary);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
     }
   } catch (error) {
     lease.close();
@@ -51,7 +55,7 @@ export function acquireWriterLock(root: string): () => void {
     released = true;
     try {
       try {
-        if (JSON.parse(readFileSync(marker, 'utf8')).token === token) rmSync(marker);
+        if (JSON.parse(readFileSync(marker, 'utf8')).token === token) unlinkSync(marker);
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       }

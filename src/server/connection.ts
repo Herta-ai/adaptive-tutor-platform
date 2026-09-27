@@ -1,4 +1,4 @@
-import { writeFileSync, rmSync } from 'node:fs';
+import { writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 export function publishConnection(root: string, origin: string, mcpToken: string) {
@@ -19,5 +19,12 @@ export function publishConnection(root: string, origin: string, mcpToken: string
   }
   const path = join(root, 'runtime', 'connection.json');
   writeFileSync(path, JSON.stringify({ origin, mcpToken }), { mode: 0o600 });
-  return () => rmSync(path, { force: true });
+  return () => {
+    // Node 24.10.0 fs.rmSync can silently leave files in Windows Unicode paths.
+    try {
+      unlinkSync(path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  };
 }

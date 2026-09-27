@@ -18,6 +18,7 @@ import { createMechanicsExample } from '../domain/paths.js';
 import { Remediation } from '../domain/remediation.js';
 import { Transfer } from '../transfer/learn.js';
 import { frameDocument } from '../code-sandbox/frame.js';
+import { mcpRegistrationCommand } from './installation.js';
 
 export const secret = () => randomBytes(32).toString('hex');
 const commandKey = z.strictObject({ clientRequestId: id });
@@ -184,8 +185,7 @@ export function createApplication(
               .list('job')
               .filter((j) => j.kind === 'probe')
               .at(-1)?.resultRef ?? null,
-          mcpRegistration:
-            '在终端使用 agy mcp add 注册 dist/mcp/stdio.js；应用不会修改 CLI 全局配置。',
+          mcpRegistration: mcpRegistrationCommand(executable ?? undefined),
         });
         return;
       }

@@ -324,12 +324,14 @@ export function Studio() {
             {runtime?.probe && <pre>{JSON.stringify(runtime.probe, null, 2)}</pre>}
             <h3>课程 MCP</h3>
             <p>
-              生产构建完成后，在你自己的终端执行下列命令，将占位路径替换为绝对路径。已有同名配置时请先检查，不要覆盖。
+              在 PowerShell
+              中执行下列本机注册命令。已有同名配置时请先检查，不要覆盖；移动程序目录后需要重新注册。
             </p>
-            <code>
-              agy mcp add --type stdio adaptive-tutor &quot;Node绝对路径&quot;
-              &quot;应用目录/dist/mcp/stdio.js&quot;
-            </code>
+            <code>{runtime?.mcpRegistration ?? '正在读取本机注册路径…'}</code>
+            <p>
+              便携版未检测到 agy 时，可在程序目录 portable-settings.json 中填写
+              agyPath，保存后重启。
+            </p>
             <p className="muted">CLI 继承当前用户权限；plan/sandbox 参数不代表操作系统级隔离。</p>
           </section>
         </main>

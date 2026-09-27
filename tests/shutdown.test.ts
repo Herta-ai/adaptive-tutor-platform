@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from '../src/storage/database.js';
 import { installShutdown } from '../src/server/shutdown.js';
+import { publishConnection } from '../src/server/connection.js';
 const roots: string[] = [];
 const stores: Store[] = [];
 function root() {
@@ -31,6 +32,17 @@ it('excludes live writers and closes idempotently', () => {
   expect(() => open(r)).toThrow('占用');
   s.close();
   s.close();
+  expect(existsSync(join(r, 'runtime/writer.lock'))).toBe(false);
+  open(r);
+});
+it('removes writer marker and connection in a Windows Unicode data path', () => {
+  const r = join(root(), '中文 用户');
+  const s = open(r);
+  const dispose = publishConnection(r, 'http://127.0.0.1:12345', 'synthetic-test-token');
+  dispose();
+  dispose();
+  s.close();
+  expect(existsSync(join(r, 'runtime/connection.json'))).toBe(false);
   expect(existsSync(join(r, 'runtime/writer.lock'))).toBe(false);
   open(r);
 });

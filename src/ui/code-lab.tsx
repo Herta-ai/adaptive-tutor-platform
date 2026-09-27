@@ -157,8 +157,8 @@ export function CodeLab() {
       </div>
       <pre aria-label="实验输出">{output}</pre>
       <p className="muted">
-        不能访问课程数据库、宿主文件或网络。Python 提供标准库；NumPy 需先运行 pnpm runtimes:prepare
-        准备固定版本运行库。输出仅为实验反馈，不改变掌握状态。
+        不能访问课程数据库、宿主文件或网络。Python 提供标准库；便携版已包含 NumPy。
+        输出仅为实验反馈，不改变掌握状态。
       </p>
     </section>
   );

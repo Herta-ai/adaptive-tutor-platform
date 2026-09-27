@@ -1,0 +1,37 @@
+[
+  {
+    "file": "pyodide-0.28.3-LICENSE",
+    "url": "https://raw.githubusercontent.com/pyodide/pyodide/0.28.3/LICENSE",
+    "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"
+  },
+  {
+    "file": "python-3.13.2-LICENSE",
+    "url": "https://raw.githubusercontent.com/python/cpython/v3.13.2/LICENSE",
+    "sha256": "78b12c3a81360b357002334f0e70ea0e92eebf7a9b358805c03c48484945f3bb"
+  },
+  {
+    "file": "tensorflow-js-4.22.0-LICENSE",
+    "url": "https://raw.githubusercontent.com/tensorflow/tfjs/tfjs-v4.22.0/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  {
+    "file": "tensorflow-layers-4.22.0-LICENSE",
+    "url": "https://raw.githubusercontent.com/tensorflow/tfjs/tfjs-v4.22.0/tfjs-layers/LICENSE",
+    "sha256": "a79c269bc0e74de72571cea54c5f92ed74cbc6e8d1250a9fdb40357383d9dc4b"
+  },
+  {
+    "file": "next-16.2.0-LICENSE",
+    "url": "https://raw.githubusercontent.com/vercel/next.js/v16.2.0/license.md",
+    "sha256": "ee765244e2d59f5234d474f62e0766fa0c8b99af967fdd4c0cb8dcb0c76ea224"
+  },
+  {
+    "file": "remark-math-6.0.0-LICENSE",
+    "url": "https://raw.githubusercontent.com/remarkjs/remark-math/6.0.0/license",
+    "sha256": "cb992262f361a5359e6771c28740d33c7041e15332ae8537fae40538992591a9"
+  },
+  {
+    "file": "tr46-0.0.3-LICENSE",
+    "url": "https://raw.githubusercontent.com/jsdom/tr46/main/LICENSE.md",
+    "sha256": "499d6d466d064e0460427967a344e2a32fcb86ea8c6cd1a285ec4f1fa03fba67"
+  }
+]

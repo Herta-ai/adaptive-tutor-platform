@@ -1,6 +1,7 @@
 {
   "name": "adaptive-tutor-platform",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "engines": {
@@ -17,7 +18,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "verify:coverage": "tsx scripts/coverage.ts"
+    "verify:coverage": "tsx scripts/coverage.ts",
+    "package:win": "tsx scripts/package-windows.ts",
+    "verify:portable": "tsx scripts/verify-portable.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.27.1",

@@ -1,0 +1,7 @@
+{
+  "version": "24.10.0",
+  "platform": "win-x64",
+  "url": "https://nodejs.org/dist/v24.10.0/node-v24.10.0-win-x64.zip",
+  "sha256": "adc1a2d5ca79c92e94f3a58c3ec0efa76bdb488769ba4d4b50990e4c84896060",
+  "checksumSource": "https://nodejs.org/dist/v24.10.0/SHASUMS256.txt"
+}

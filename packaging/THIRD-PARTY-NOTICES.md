@@ -1,0 +1,13 @@
+# Third-party notices and source availability
+
+The MIT license at the root applies to Adaptive Tutor Platform's own code. Third-party components retain their respective licenses, copyright notices, and source-availability terms. Antigravity CLI and user credentials are not included.
+
+- `runtime/LICENSE` is the complete license and third-party notices supplied with the pinned official Node.js Windows distribution.
+- `THIRD-PARTY-NOTICES/dependencies.json` inventories the distributed npm packages, their versions, declared licenses, repository metadata, and on-disk package locations. Upstream LICENSE, COPYING, NOTICE, README and source-file notices remain inside `app/node_modules/`, including Next.js's compiled dependencies and QuickJS/WASM notices.
+- Supplemental upstream license texts that npm packages omit are in `THIRD-PARTY-NOTICES/`. Their source URLs and SHA-256 values are recorded in `sources.json`. TensorFlow.js packages use Apache-2.0; tfjs-layers additionally carries MIT notices. The remark-math monorepo license also covers rehype-katex. Next's license covers the distributed @next components and its client-only/server-only marker packages; vendored components retain their own notices.
+- Pyodide 0.28.3 is distributed under MPL-2.0; its license is supplied here. The unmodified upstream source, including build configuration and dependency recipes, is available at https://github.com/pyodide/pyodide/tree/0.28.3 and https://github.com/pyodide/pyodide/archive/refs/tags/0.28.3.tar.gz . Pyodide's JavaScript loader is bundled into the application's sandbox Worker; no upstream Pyodide source changes are made. The application bundling recipe is `scripts/build-runtimes.ts` in the corresponding source release. These source-availability terms do not restrict recipients' rights under the MPL.
+- Pyodide embeds CPython 3.13.2; its full PSF license and notices are supplied as `python-3.13.2-LICENSE`. Source: https://github.com/python/cpython/tree/v3.13.2 . Additional dependency sources and build recipes are recorded by the Pyodide release above.
+- NumPy 2.2.5 and the libraries bundled in its fixed Pyodide wheel retain the license texts extracted under `THIRD-PARTY-NOTICES/numpy/`. The original wheel is also distributed in `app/.runtime-build/`. Source: https://github.com/numpy/numpy/tree/v2.2.5 and the Pyodide dependency recipes above.
+- SQL.js and QuickJS/Emscripten artifacts are copied from the pinned npm packages. Their licenses and upstream source references remain in those packages. `app/.runtime-build/manifest.json` identifies the exact runtime files by SHA-256.
+
+This release does not relicense third-party code as MIT. Please preserve these files and the package-level notices when redistributing the portable application.

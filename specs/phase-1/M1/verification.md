@@ -34,3 +34,5 @@ tests/assessment.test.ts、units.test.ts、storage.test.ts、remediation.test.ts
 tests/shutdown.test.ts 的7项验证包括活实例互斥、旧PID保护、初始化失败释放、真实子进程强杀后恢复、旧死PID恢复、重复SIGINT，以及清理异常/超时。强杀使用临时目录，SIGINT使用进程事件注入；Windows终端手按Ctrl+C及启动期间退出仍待人工复核，不能用模拟信号代替该项证据。没有删除用户锁或终止用户进程。
 
 Node24全量 Vitest 12文件/113项、类型检查、生产构建通过。Edge全量首次7项通过，A24在浏览器context teardown超时；A24单独重跑通过（25.6秒），保留首次失败记录，不标作首次全绿。
+
+便携包中文路径验收追加发现：Node 24.10.0 Windows 的 `fs.rmSync` 对中文路径下普通文件可能返回成功却未删除；独立临时文件复现 `existsSync` 仍为 true，`unlinkSync` 可正常删除。writer.lock、临时锁标记和 connection.json 改用 unlinkSync 并仅忽略 ENOENT。`tests/shutdown.test.ts` 新增真实中文数据目录与 connection ACL/清理回归，退出验证见 M5/portable-release.md。

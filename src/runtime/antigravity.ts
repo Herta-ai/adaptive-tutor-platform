@@ -137,6 +137,11 @@ export class NativeStream {
   }
 }
 export function findCli() {
+  // The portable launcher validates this user-selected absolute executable path.
+  if (process.env.ADAPTIVE_TUTOR_AGY_PATH) {
+    const path = process.env.ADAPTIVE_TUTOR_AGY_PATH;
+    return isAbsolute(path) && existsSync(path) ? path : undefined;
+  }
   for (const directory of (process.env.PATH ?? '').split(delimiter)) {
     const path = join(directory, process.platform === 'win32' ? 'agy.exe' : 'agy');
     if (existsSync(path)) return resolve(path);

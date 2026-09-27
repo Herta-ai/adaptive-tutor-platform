@@ -10,3 +10,5 @@ test-results/
 /runtime/
 *.log
 .runtime-build/
+.release-work/
+releases/

@@ -7,6 +7,7 @@ import { Store, dataRoot } from '../storage/database.js';
 import { createApplication } from './http.js';
 import { publishConnection } from './connection.js';
 import { installShutdown } from './shutdown.js';
+import { openBrowser } from './installation.js';
 
 if (Number(process.versions.node.split('.')[0]) !== 24)
   throw new Error('本项目要求 Node.js 24 LTS，请先切换项目 Node 版本。');
@@ -49,8 +50,10 @@ try {
   app = createApplication(store, { dev, handlePage: web.getRequestHandler() });
   await app.listen();
   disposeConnection = publishConnection(root, app.origin, app.mcpToken);
-  console.log(`本地学习工作室：${app.origin}/#bootstrap=${app.mintBootstrap()}`);
+  const bootstrapUrl = `${app.origin}/#bootstrap=${app.mintBootstrap()}`;
+  console.log(`本地学习工作室：${bootstrapUrl}`);
   console.log('仅供本机使用。在线功能使用你已登录的 agy 额度；首次探针请在设置页手动启动。');
+  if (process.platform === 'win32' && process.argv.includes('--open')) openBrowser(bootstrapUrl);
 } catch (error) {
   console.error(error);
   await shutdown.stop(1);

@@ -2,6 +2,8 @@
 
 基于 docs 的一期开发中版本：Next.js 本地界面、Node 常驻服务、**node:sqlite**、Antigravity CLI 与课程 MCP。只有 Windows 11 / Edge 的已记录场景经过本机验证；**尚未满足完整一期验收**，见 [验收追踪](specs/phase-1/acceptance.md) 和 [剩余工作](specs/phase-1/remaining.md)。
 
+Windows 用户可使用便携预览 ZIP：完整解压后双击 `start.cmd`，无需安装 Node/pnpm。构建命令、GitHub 草稿发布流程和验证范围见 [便携版发布](docs/便携版发布.md)；方案背景见 [发布方案调研](docs/发布方案.md)。
+
 ## 启动
 
 使用 Node.js **24.10.0** 与 pnpm。无需 node-gyp、Python 构建工具或 Visual Studio C++ 工具链；SQLite 使用 Node 内置模块。Next/SWC 与 esbuild 使用已发布的预编译包，sharp 已排除。
@@ -36,6 +38,8 @@ pnpm start
 agy mcp add --type stdio adaptive-tutor "Node 24 可执行文件绝对路径" "应用目录/dist/mcp/stdio.js"
 ```
 
+环境设置页会显示本机已填好路径的 PowerShell 命令。便携版可在 `portable-settings.json` 指定 `agyPath`，保存后重启；移动程序目录后需重新检查 MCP 注册。
+
 MCP 适配器不直接写数据库，只连接同一应用的私有网关；没有有效任务 scope 不能读写课程。草稿只有在 CLI 成功退出、最终回执及版本检查通过后才可发布；大纲和正文重写另需用户确认。
 
 CLI 继承当前 OS 用户权限。实际探针报告权限模式 `always-proceed`；`plan` / `sandbox` 不等于操作系统隔离。代码实验使用另一套 opaque-origin iframe + Worker + WASM 环境，与 CLI 权限不同。
@@ -59,3 +63,7 @@ pnpm verify:coverage
 - JS/SQL/Python 小程序实际在 WASM 中运行，可停止和限时；Pyodide 默认标准库，NumPy 需预备固定运行库。浏览器环境不承诺 OS 级硬内存上限。
 - 当前 `.learn` 往返支持**无外部资源**的内容包和个人备份；存在资源引用时明确拒绝，尚未实现分子文件/GLB/图片/数据集完整资源迁移。
 - 缺失的完整主题、八条学科讲练路径、人工科学复核和性能基准均保留在一期范围内，不以现有模板数量冒充完成。
+
+## 许可证
+
+本项目采用 [MIT License](LICENSE)。第三方组件保留各自许可证，便携包附带完整依赖版本清单、许可文件和源码获取说明。
