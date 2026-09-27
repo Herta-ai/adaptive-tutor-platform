@@ -199,7 +199,7 @@ const personalKeys: Record<string, string[]> = {
     'verificationStarted',
   ],
   note: ['id', 'courseId', 'text', 'version', 'updatedAt'],
-  session: ['id', 'courseId', 'status', 'providerBindingValid', 'createdAt'],
+  session: ['id', 'courseId', 'status', 'providerBindingValid', 'createdAt', 'clearedAt'],
   message: [
     'id',
     'courseId',

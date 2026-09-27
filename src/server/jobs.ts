@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { Store, uuid, now } from '../storage/database.js';
 import { Courses } from '../domain/courses.js';
 import { AppError, requireThat } from '../domain/errors.js';
-import { detectRuntime, runCli } from '../runtime/antigravity.js';
+import { detectRuntime, runCli, type NativeActivity } from '../runtime/antigravity.js';
 import { receipt, draftSchemas, turn, type Kind } from '../contracts/v1.js';
 import { publicCapabilities, capability, validateParameters } from '../capabilities/registry.js';
 import { Remediation } from '../domain/remediation.js';
@@ -28,6 +28,7 @@ export class Jobs {
           store.put('job', {
             ...j,
             state: 'interrupted',
+            finishedAt: now(),
             error: { code: 'APP_RESTARTED', message: '应用重启，任务未自动重跑' },
           });
           this.settleMessage(j, 'interrupted');
@@ -216,7 +217,7 @@ export class Jobs {
     return this.store.transaction(() => {
       const j = this.store.must('job', id);
       if (terminal.includes(j.state)) return j;
-      const cancelled = { ...j, state: 'cancelled' };
+      const cancelled = { ...j, state: 'cancelled', finishedAt: now() };
       this.store.put('job', cancelled);
       this.settleMessage(j, 'cancelled');
       this.revoke(j);
@@ -224,6 +225,37 @@ export class Jobs {
       if (this.active?.id === id) this.active.controller.abort();
       return cancelled;
     });
+  }
+  clearSession(sessionId: string) {
+    const session = this.store.must('session', sessionId);
+    const jobs = this.store.list('job', session.courseId).filter((j) => j.sessionId === sessionId);
+    requireThat(
+      !jobs.some((j) => !terminal.includes(j.state) || this.active?.id === j.id),
+      'SESSION_BUSY',
+      '请先停止回复，等待 agy 进程结束后再清空',
+      409,
+    );
+    const messages = this.store.list('message', session.courseId, sessionId);
+    const contexts = new Set(
+      [
+        ...messages.map((m) => m.contextSnapshotId),
+        ...jobs.map((j) => j.payload?.contextSnapshotId),
+      ].filter(Boolean),
+    );
+    for (const message of messages) this.store.remove('message', message.id);
+    const ids = new Set(jobs.map((j) => j.id));
+    for (const scope of this.store.list('scope', session.courseId))
+      if (ids.has(scope.requestId)) this.store.remove('scope', scope.id);
+    for (const job of jobs) this.store.remove('job', job.id);
+    const retainedContexts = new Set(
+      this.store.list('message', session.courseId).map((m) => m.contextSnapshotId),
+    );
+    for (const id of contexts) if (!retainedContexts.has(id)) this.store.remove('context', id);
+    this.store.db.prepare('DELETE FROM events WHERE session_id=?').run(sessionId);
+    const { providerConversationId, ...rest } = session;
+    this.store.put('session', { ...rest, providerBindingValid: false, clearedAt: now() });
+    this.store.emit('session.cleared', { sessionId }, session.courseId, sessionId);
+    return { sessionId, cleared: true };
   }
   async close() {
     this.closed = true;
@@ -234,6 +266,7 @@ export class Jobs {
         this.store.put('job', {
           ...job,
           state: 'interrupted',
+          finishedAt: now(),
           error: { code: 'APP_STOPPED', message: '应用已退出' },
         });
         this.settleMessage(job, 'interrupted');
@@ -280,7 +313,7 @@ export class Jobs {
                   code: 'CONTENT_INVALID',
                   message: e instanceof z.ZodError ? '生成内容未通过结构校验' : '任务执行失败',
                 };
-          this.store.put('job', { ...current, state: 'failed', error });
+          this.store.put('job', { ...current, state: 'failed', error, finishedAt: now() });
           this.settleMessage(current, 'failed');
           this.revoke(current);
           this.store.emit('job.failed', { error }, job.courseId, job.sessionId, job.id);
@@ -311,6 +344,30 @@ export class Jobs {
         this.store.put('message', { ...message, status }, job.sessionId);
     }
   }
+  private recordActivity(jobId: string, activity: NativeActivity) {
+    if (this.closed) return;
+    this.store.transaction(() => {
+      const job = this.store.must('job', jobId);
+      if (job.state !== 'running') return;
+      const timestamp = now();
+      const activities = [...(job.activities ?? [])];
+      const index = activities.findIndex((a) => a.id === activity.id);
+      if (index >= 0 && activities[index].state === activity.state) return;
+      const entry = {
+        ...activity,
+        startedAt: index >= 0 ? activities[index].startedAt : timestamp,
+        updatedAt: timestamp,
+      };
+      if (index >= 0) activities[index] = entry;
+      else activities.push(entry);
+      this.store.put('job', {
+        ...job,
+        activities: activities.slice(-80),
+        lastActivityAt: timestamp,
+      });
+      this.store.emit('job.progress', { activity: entry }, job.courseId, job.sessionId, job.id);
+    });
+  }
   private async execute(job: any, signal: AbortSignal) {
     const runId = uuid(),
       scopeId = uuid(),
@@ -319,13 +376,20 @@ export class Jobs {
     const timeoutMs =
       job.kind === 'plan_course'
         ? 600000
-        : ['generate_lesson', 'revise_lesson', 'generate_exercises'].includes(job.kind)
+        : ['chat', 'generate_lesson', 'revise_lesson', 'generate_exercises'].includes(job.kind)
           ? 300000
           : 180000;
     this.store.transaction(() => {
       const current = this.store.must('job', job.id);
       requireThat(current.state === 'queued', 'JOB_STALE', '任务状态已变化');
-      this.store.put('job', { ...current, state: 'running', runId });
+      this.store.put('job', {
+        ...current,
+        state: 'running',
+        runId,
+        startedAt: now(),
+        timeoutMs,
+        activities: [],
+      });
       if (job.courseId) {
         const nodes = job.payload.nodeId
           ? [job.payload.nodeId]
@@ -451,6 +515,8 @@ export class Jobs {
         schemaPath,
         conversationId,
         signal,
+        onActivity:
+          job.kind === 'chat' ? (activity) => this.recordActivity(job.id, activity) : undefined,
         onDelta:
           job.kind === 'chat'
             ? (text) => {
@@ -637,6 +703,7 @@ export class Jobs {
       this.store.put('job', {
         ...current,
         state: 'completed',
+        finishedAt: now(),
         resultRef,
         elapsedMs: output.elapsedMs,
       });

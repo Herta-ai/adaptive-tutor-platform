@@ -1,25 +1,69 @@
 {
-  "date": "2026-09-26T09:28:31.485Z",
+  "date": "2026-09-26T10:08:23.318Z",
   "cliVersion": "1.2.11",
   "synthetic": true,
   "turns": [
     {
       "state": "completed",
       "messageStatus": "complete",
-      "responseLength": 313,
-      "elapsedMs": 23386.8701,
+      "responseLength": 264,
+      "elapsedMs": 14256.5352,
       "error": null,
       "conversationBound": true,
-      "continuedSameConversation": null
+      "continuedSameConversation": null,
+      "timeoutMs": 300000,
+      "activityCount": 4,
+      "phases": [
+        {
+          "phase": "init",
+          "state": "done"
+        },
+        {
+          "phase": "input",
+          "state": "done"
+        },
+        {
+          "phase": "response",
+          "state": "done"
+        },
+        {
+          "phase": "result",
+          "state": "done"
+        }
+      ]
     },
     {
       "state": "completed",
       "messageStatus": "complete",
-      "responseLength": 698,
-      "elapsedMs": 33696.1746,
+      "responseLength": 523,
+      "elapsedMs": 15843.067300000002,
       "error": null,
       "conversationBound": true,
-      "continuedSameConversation": true
+      "continuedSameConversation": true,
+      "timeoutMs": 300000,
+      "activityCount": 5,
+      "phases": [
+        {
+          "phase": "init",
+          "state": "done"
+        },
+        {
+          "phase": "input",
+          "state": "done"
+        },
+        {
+          "phase": "processing",
+          "state": "done"
+        },
+        {
+          "phase": "response",
+          "state": "done"
+        },
+        {
+          "phase": "result",
+          "state": "done"
+        }
+      ]
     }
   ],
   "status": "passed"

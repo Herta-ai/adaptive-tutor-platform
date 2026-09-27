@@ -22,6 +22,144 @@ test.afterAll(async () => {
   store?.close();
   if (root) rmSync(root, { recursive: true, force: true });
 });
+test('清空导师对话支持取消确认，跨标签同步，刷新保持清空', async ({ page }) => {
+  const course = createGeometryExample(app.courses);
+  store.put('course', { ...course, title: '清空对话回归' });
+  const session = store.put('session', {
+    id: uuid(),
+    courseId: course.id,
+    status: 'active',
+    providerBindingValid: true,
+    providerConversationId: 'synthetic-old-binding',
+  });
+  const requestId = uuid();
+  store.put('job', {
+    id: requestId,
+    courseId: course.id,
+    sessionId: session.id,
+    kind: 'chat',
+    state: 'completed',
+  });
+  store.put(
+    'message',
+    {
+      id: uuid(),
+      courseId: course.id,
+      sessionId: session.id,
+      requestId,
+      role: 'assistant',
+      status: 'complete',
+      text: '这是一条待清空的导师回答',
+    },
+    session.id,
+  );
+  await page.goto(app.origin + '/#bootstrap=' + app.mintBootstrap());
+  const open = (target: typeof page) =>
+    target
+      .getByRole('button')
+      .filter({ has: target.getByRole('heading', { name: '清空对话回归', exact: true }) })
+      .click();
+  await open(page);
+  const other = await page.context().newPage();
+  await other.goto(app.origin);
+  await open(other);
+  await expect(other.getByText('这是一条待清空的导师回答', { exact: true })).toBeVisible();
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.getByRole('button', { name: '清空对话', exact: true }).click();
+  await expect(page.getByText('这是一条待清空的导师回答', { exact: true })).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: '清空对话', exact: true }).click();
+  for (const target of [page, other]) {
+    await expect(target.getByText('这是一条待清空的导师回答', { exact: true })).toHaveCount(0);
+    await expect(
+      target.getByRole('heading', { name: '从「为什么」开始', exact: true }),
+    ).toBeVisible();
+  }
+  expect(store.must('session', session.id).providerConversationId).toBeUndefined();
+  expect(store.get('course', course.id)).toBeDefined();
+  await page.reload();
+  await open(page);
+  await expect(page.getByText('这是一条待清空的导师回答', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '清空对话', exact: true })).toBeDisabled();
+  await other.close();
+});
+test('导师显示实时 agy 步骤、五分钟预算，刷新保留记录并可停止', async ({ page }) => {
+  const course = createGeometryExample(app.courses);
+  store.put('course', { ...course, title: '导师进度回归' });
+  const session = store.put('session', {
+    id: uuid(),
+    courseId: course.id,
+    status: 'active',
+    providerBindingValid: false,
+  });
+  const requestId = uuid(),
+    timestamp = new Date().toISOString();
+  const init = {
+    id: 'init',
+    phase: 'init',
+    state: 'done',
+    startedAt: timestamp,
+    updatedAt: timestamp,
+  };
+  store.put('job', {
+    id: requestId,
+    kind: 'chat',
+    courseId: course.id,
+    sessionId: session.id,
+    state: 'running',
+    startedAt: timestamp,
+    timeoutMs: 300000,
+    activities: [init],
+    lastActivityAt: timestamp,
+  });
+  store.put(
+    'message',
+    {
+      id: uuid(),
+      courseId: course.id,
+      sessionId: session.id,
+      requestId,
+      role: 'assistant',
+      status: 'pending',
+      text: '',
+    },
+    session.id,
+  );
+  await page.goto(app.origin + '/#bootstrap=' + app.mintBootstrap());
+  const open = () =>
+    page
+      .getByRole('button')
+      .filter({ has: page.getByRole('heading', { name: '导师进度回归', exact: true }) })
+      .click();
+  await open();
+  const progress = page.getByRole('region', { name: 'agy 执行进度' });
+  await expect(progress).toContainText('最长 5 分钟');
+  await expect(progress).toContainText('已连接 agy');
+  await expect(page.getByRole('button', { name: '清空对话', exact: true })).toBeDisabled();
+  const step = {
+    id: 'step-2-tool',
+    phase: 'tool',
+    state: 'active',
+    stepIndex: 2,
+    startedAt: timestamp,
+    updatedAt: new Date().toISOString(),
+  };
+  store.transaction(() => {
+    store.put('job', {
+      ...store.must('job', requestId),
+      activities: [init, step],
+      lastActivityAt: step.updatedAt,
+    });
+    store.emit('job.progress', { activity: step }, course.id, session.id, requestId);
+  });
+  await expect(progress).toContainText('步骤 3 · 工具调用');
+  await page.reload();
+  await open();
+  await expect(progress).toContainText('步骤 3 · 工具调用');
+  await page.getByRole('button', { name: '停止', exact: true }).click();
+  await expect(progress.locator('strong')).toHaveText('已停止');
+  await expect(progress).not.toContainText('最长 5 分钟');
+});
 test('我的课程可确认删除：取消不删除，活动任务保护，记录清理且刷新不恢复', async ({ page }) => {
   const course = createGeometryExample(app.courses);
   store.put('course', { ...course, title: '待删除课程' });
@@ -46,7 +184,9 @@ test('我的课程可确认删除：取消不删除，活动任务保护，记�
   expect(requests).toBe(0);
   page.once('dialog', (dialog) => dialog.accept());
   await remove.click();
-  await expect(page.getByRole('alert').filter({ hasText: '请先取消当前课程的活动任务' })).toBeVisible();
+  await expect(
+    page.getByRole('alert').filter({ hasText: '请先取消当前课程的活动任务' }),
+  ).toBeVisible();
   expect(store.get('course', course.id)).toBeDefined();
   store.put('job', { ...job, state: 'completed' });
   page.once('dialog', (dialog) => dialog.accept());

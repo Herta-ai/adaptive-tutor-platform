@@ -53,7 +53,7 @@ try {
       )
     ) {
       await new Promise((r) => setTimeout(r, 1000));
-      if (Date.now() - started > 190000) jobs.cancel(request.requestId);
+      if (Date.now() - started > 310000) jobs.cancel(request.requestId);
     }
     const job = store.must('job', request.requestId);
     const message = store
@@ -70,6 +70,9 @@ try {
       continuedSameConversation: priorConversation
         ? binding.providerConversationId === priorConversation
         : null,
+      timeoutMs: job.timeoutMs,
+      activityCount: job.activities?.length ?? 0,
+      phases: job.activities?.map((a: any) => ({ phase: a.phase, state: a.state })) ?? [],
     });
     priorConversation = binding.providerConversationId;
     console.log(JSON.stringify(report.turns.at(-1)));

@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
+import { acquireWriterLock } from './writer-lock.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
@@ -24,10 +25,13 @@ export function canonical(value: unknown): string {
 export const hash = (v: unknown) => createHash('sha256').update(canonical(v)).digest('hex');
 // Rows store immutable domain snapshots; keys and indexes enforce ownership and idempotency.
 export class Store {
-  readonly db: DatabaseSync;
+  readonly db!: DatabaseSync;
+  private releaseLock?: () => void;
+  private closed = false;
+  private onExit = () => this.close();
   constructor(
     readonly root: string,
-    private ownsLock = false,
+    ownsLock = false,
   ) {
     mkdirSync(root, { recursive: true });
     for (const dir of [
@@ -41,18 +45,7 @@ export class Store {
       'runtime',
     ])
       mkdirSync(join(root, dir), { recursive: true });
-    if (ownsLock) {
-      const lock = join(root, 'runtime', 'writer.lock');
-      try {
-        writeFileSync(lock, JSON.stringify({ pid: process.pid }), { flag: 'wx', mode: 0o600 });
-      } catch {
-        throw new AppError(
-          'APP_ALREADY_RUNNING',
-          '数据目录已被应用占用；若异常退出，请确认旧实例停止后移除 writer.lock',
-          409,
-        );
-      }
-    }
+    if (ownsLock) this.releaseLock = acquireWriterLock(root);
     try {
       this.db = new DatabaseSync(join(root, 'tutor.sqlite'));
       this.db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
@@ -68,9 +61,10 @@ export class Store {
     PRAGMA user_version=1;
    `);
     } catch (error) {
-      if (ownsLock) rmSync(join(root, 'runtime', 'writer.lock'), { force: true });
+      this.close();
       throw error;
     }
+    if (ownsLock) process.once('exit', this.onExit);
   }
   get<T = any>(kind: string, id: string): T | undefined {
     const row = this.db.prepare('SELECT body FROM entities WHERE kind=? AND id=?').get(kind, id) as
@@ -239,7 +233,13 @@ export class Store {
     });
   }
   close() {
-    this.db.close();
-    if (this.ownsLock) rmSync(join(this.root, 'runtime', 'writer.lock'), { force: true });
+    if (this.closed) return;
+    this.closed = true;
+    process.removeListener('exit', this.onExit);
+    try {
+      this.db?.close();
+    } finally {
+      this.releaseLock?.();
+    }
   }
 }

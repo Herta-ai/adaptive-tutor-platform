@@ -528,6 +528,19 @@ export function createApplication(
           return;
         }
       }
+      if (parts[0] === 'sessions' && parts[2] === 'clear' && method === 'POST') {
+        const p = z
+          .strictObject({ clientRequestId: id, confirm: z.literal(true) })
+          .parse(await body(req));
+        json(
+          res,
+          200,
+          store.command('session.clear:' + parts[1], p.clientRequestId, p, () =>
+            jobs.clearSession(parts[1]),
+          ),
+        );
+        return;
+      }
       if (parts[0] === 'sessions' && parts[2] === 'turns' && method === 'POST') {
         const p = await body(req);
         const key = id.parse(p.clientRequestId);
@@ -832,9 +845,13 @@ export function createApplication(
       }),
     close: async () => {
       clearInterval(maintenance);
-      await jobs.close();
+      const closed = new Promise<void>((resolve) => server.close(() => resolve()));
       server.closeAllConnections();
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+      try {
+        await jobs.close();
+      } finally {
+        await closed;
+      }
     },
   };
 }

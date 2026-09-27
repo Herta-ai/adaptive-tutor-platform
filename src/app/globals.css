@@ -500,6 +500,12 @@ small {
   font-size: 14px;
   margin-bottom: 5px;
 }
+.clear-chat {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 7px;
+}
 .avatar {
   background: #e8efdf;
   width: 36px;
@@ -514,6 +520,34 @@ small {
   flex: 1;
   overflow: auto;
   padding: 20px;
+}
+.chat-progress {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.chat-progress p {
+  margin: 6px 0;
+  font-size: 11px;
+}
+.chat-progress summary {
+  cursor: pointer;
+}
+.chat-progress ol {
+  padding-left: 20px;
+  max-height: 220px;
+  overflow: auto;
+}
+.chat-progress li {
+  margin: 8px 0;
+}
+.chat-progress time {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
 }
 .chat-empty {
   text-align: center;

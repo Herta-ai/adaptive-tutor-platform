@@ -5,6 +5,12 @@ import { delimiter, isAbsolute, join, resolve } from 'node:path';
 import { AppError, requireThat } from '../domain/errors.js';
 
 export const CLI_EXIT_GRACE_MS = 15000;
+export interface NativeActivity {
+  id: string;
+  phase: 'init' | 'input' | 'response' | 'tool' | 'processing' | 'result';
+  state: 'active' | 'done' | 'failed';
+  stepIndex?: number;
+}
 
 export interface NativeResult {
   status: string;
@@ -16,10 +22,20 @@ export class NativeStream {
   private decoder = new StringDecoder('utf8');
   private buffer = '';
   private total = 0;
+  private lastActivity = '';
   result?: NativeResult;
   conversationId?: string;
   permissionMode?: string;
-  constructor(private delta: (text: string, step: number) => void = () => {}) {}
+  constructor(
+    private delta: (text: string, step: number) => void = () => {},
+    private activity: (activity: NativeActivity) => void = () => {},
+  ) {}
+  private report(activity: NativeActivity) {
+    const key = JSON.stringify(activity);
+    if (key === this.lastActivity) return;
+    this.lastActivity = key;
+    this.activity(activity);
+  }
   push(chunk: Buffer) {
     this.total += chunk.length;
     requireThat(this.total <= 10 * 1024 * 1024, 'CLI_OUTPUT_LIMIT', 'CLI 输出超过限制');
@@ -52,6 +68,7 @@ export class NativeStream {
       requireThat(typeof e.conversation_id === 'string', 'CLI_PROTOCOL_ERROR', '缺少 CLI 会话');
       this.conversationId = e.conversation_id;
       this.permissionMode = e.init?.permission_mode;
+      this.report({ id: 'init', phase: 'init', state: 'done' });
     }
     if (e.event === 'step_update') {
       requireThat(
@@ -60,6 +77,27 @@ export class NativeStream {
         '步骤事件不完整',
       );
       const s = e.step_update;
+      const phase: NativeActivity['phase'] =
+        s.step_type === 'user_input'
+          ? 'input'
+          : s.step_type === 'agent_response'
+            ? 'response'
+            : s.step_type === 'tool'
+              ? 'tool'
+              : 'processing';
+      const stepIndex =
+        Number.isSafeInteger(s.step_index) && s.step_index >= 0 ? s.step_index : undefined;
+      this.report({
+        id: `step-${stepIndex ?? 'unknown'}-${phase}`,
+        phase,
+        stepIndex,
+        state:
+          s.state === 'DONE'
+            ? 'done'
+            : ['FAILED', 'ERROR', 'CANCELLED'].includes(s.state)
+              ? 'failed'
+              : 'active',
+      });
       if (s.step_type === 'agent_response' && s.text_delta !== undefined) {
         requireThat(
           typeof s.text_delta === 'string' && Number.isInteger(s.step_index),
@@ -76,6 +114,11 @@ export class NativeStream {
         '重复或无效的最终结果',
       );
       this.result = e.result;
+      this.report({
+        id: 'result',
+        phase: 'result',
+        state: e.result.status === 'SUCCESS' ? 'done' : 'failed',
+      });
     }
   }
   end() {
@@ -124,6 +167,7 @@ export function runCli(options: {
   schemaPath?: string;
   conversationId?: string;
   onDelta?: (text: string, step: number) => void;
+  onActivity?: (activity: NativeActivity) => void;
   signal: AbortSignal;
 }): Promise<{
   result: NativeResult;
@@ -156,7 +200,7 @@ export function runCli(options: {
     let stopped = false;
     let error: Error | undefined;
     let resultExitTimer: ReturnType<typeof setTimeout> | undefined;
-    const stream = new NativeStream(options.onDelta);
+    const stream = new NativeStream(options.onDelta, options.onActivity);
     const child = spawn(options.executable, args, {
       cwd: options.cwd,
       windowsHide: true,

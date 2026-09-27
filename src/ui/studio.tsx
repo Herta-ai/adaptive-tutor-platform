@@ -9,6 +9,7 @@ import { LessonDemo } from './lesson-demo';
 import { capabilities } from '../capabilities/registry';
 import { CodeLab } from './code-lab';
 import { Training } from './training';
+import { ChatProgress } from './chat-progress';
 import { TransferControls } from './transfer-controls';
 const states: Record<string, string> = {
   locked: '先修未完成',
@@ -137,6 +138,10 @@ export function Studio() {
         data.eventCursor,
         controller.signal,
         (event) => {
+          if (event.type === 'session.cleared') {
+            setContext(null);
+            setQuestion('');
+          }
           if (event.type.startsWith('message.'))
             setSnapshot((s: any) =>
               s
@@ -235,6 +240,20 @@ export function Studio() {
     });
     setQuestion('');
     await refresh();
+  }
+  async function clearChat() {
+    if (
+      !window.confirm(
+        '确定清空导师对话吗？本地消息、提问上下文和执行记录将被删除，无法撤销。下一次提问将从新对话开始。',
+      )
+    )
+      return;
+    await run(async () => {
+      await command(`/sessions/${sessionId}/clear`, { confirm: true });
+      setContext(null);
+      setQuestion('');
+      await refresh();
+    });
   }
   return (
     <div className="shell">
@@ -835,6 +854,19 @@ export function Studio() {
                 <h3>学习导师</h3>
                 <small>陪你把问题想明白</small>
               </div>
+              <button
+                className="clear-chat"
+                disabled={
+                  busy ||
+                  !sessionId ||
+                  !snapshot?.messages.length ||
+                  activeJobs.some((j: any) => j.sessionId === sessionId)
+                }
+                title="清空对话；运行中请先停止回复"
+                onClick={() => void clearChat()}
+              >
+                清空对话
+              </button>
             </div>
             <div className="chat-history">
               {snapshot?.messages.length ? (
@@ -862,6 +894,7 @@ export function Studio() {
                         {m.role === 'user' ? '你' : '导师'}
                         {status !== 'complete' ? ' · ' + (states[status] ?? '回复中') : ''}
                       </small>
+                      {m.role === 'assistant' && job && <ChatProgress job={job} />}
                       {m.text && <Markdown text={m.text} />}
                       {(!m.text || stopped) && (
                         <p role={stopped ? 'status' : undefined}>{notice}</p>

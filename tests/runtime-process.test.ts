@@ -51,3 +51,26 @@ it('最终结果不能绕过非零退出和任务总超时', async () => {
   second.child.emit('close', null);
   await timeout;
 });
+it('五分钟预算同步传给 agy，三分钟后仍等待，五分钟时超时', async () => {
+  vi.useFakeTimers();
+  const child = Object.assign(new EventEmitter(), {
+    stdout: new PassThrough(),
+    stderr: new PassThrough(),
+    pid: undefined,
+  });
+  mocks.spawn.mockReturnValue(child);
+  const promise = runCli({
+    executable: resolve('synthetic-agy.exe'),
+    cwd: process.cwd(),
+    prompt: 'test',
+    timeoutMs: 300000,
+    signal: new AbortController().signal,
+  });
+  const assertion = expect(promise).rejects.toMatchObject({ code: 'CLI_TIMEOUT' });
+  expect(mocks.spawn.mock.calls[0][1]).toContain('300s');
+  await vi.advanceTimersByTimeAsync(180001);
+  child.stdout.write('{"event":"init","conversation_id":"c"}\n');
+  await vi.advanceTimersByTimeAsync(120000);
+  child.emit('close', null);
+  await assertion;
+});
