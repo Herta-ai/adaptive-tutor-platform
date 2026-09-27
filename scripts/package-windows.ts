@@ -199,9 +199,15 @@ for (const file of ['node.exe', 'LICENSE'])
 const notices = join(bundle, 'THIRD-PARTY-NOTICES');
 cpSync(join(root, 'packaging/licenses'), notices, { recursive: true });
 const sources = JSON.parse(readFileSync(join(notices, 'sources.json'), 'utf8'));
-for (const source of sources)
-  if ((await sha256(join(notices, source.file))) !== source.sha256)
+for (const source of sources) {
+  const licensePath = join(notices, source.file);
+  const text = readFileSync(licensePath, 'utf8');
+  if (text.includes('\r\n')) {
+    writeFileSync(licensePath, text.replace(/\r\n/g, '\n'), 'utf8');
+  }
+  if ((await sha256(licensePath)) !== source.sha256)
     throw new Error(`许可文件 hash 不匹配：${source.file}`);
+}
 // The wheel includes NumPy and bundled native-library license notices.
 const numpy = Object.keys(runtimeManifest).find((name) => /^numpy-.*\.whl$/.test(name))!;
 await extractZip(join(app, '.runtime-build', numpy), join(notices, 'numpy'), (name) =>

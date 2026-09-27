@@ -29,6 +29,8 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
       RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
     steps:
+      - name: Disable Git autocrlf
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0

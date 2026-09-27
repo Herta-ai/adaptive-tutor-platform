@@ -1,0 +1,5 @@
+# Set default line endings to LF
+* text=auto eol=lf
+
+# License files are strictly verified against upstream SHA-256 hashes; treat as binary to prevent CRLF alteration
+packaging/licenses/* -text
