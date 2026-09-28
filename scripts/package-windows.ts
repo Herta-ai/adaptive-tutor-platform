@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { archivePath, filesIn, sha256, createZip, extractZip } from './release/files.js';
+import { collectLicenses } from './release/licenses.js';
 
 const root = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
@@ -60,7 +61,7 @@ if (!process.argv.includes('--skip-build')) {
 for (const file of [
   'dist/server/main.js',
   'dist/mcp/stdio.js',
-  '.next/BUILD_ID',
+  'out/index.html',
   '.runtime-build/manifest.json',
 ])
   if (!existsSync(join(root, file))) throw new Error(`缺少构建产物 ${file}`);
@@ -82,49 +83,16 @@ const bundle = join(work, name),
   app = join(bundle, 'app');
 mkdirSync(app, { recursive: true });
 
-// A fresh lockfile-driven hoisted install gives regular directories, not pnpm junctions.
-// Never prune the developer checkout, and never execute dependency install scripts.
-for (const file of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'])
-  copyFileSync(join(root, file), join(app, file));
-run(
-  ['--config.node-linker=hoisted', 'install', '--prod', '--frozen-lockfile', '--ignore-scripts'],
-  app,
-);
-const forbidden = /^(?:node-gyp|node-pre-gyp|@mapbox\/node-pre-gyp|better-sqlite3)$/;
-const dependencies = filesIn(join(app, 'node_modules'));
-const inventory: any[] = [];
-for (const file of dependencies.filter((name) => name.endsWith('/package.json'))) {
-  const path = join(app, 'node_modules', file);
-  let p: any;
-  try {
-    p = JSON.parse(readFileSync(path, 'utf8'));
-  } catch {
-    continue;
+// Explicit entry whitelist avoids stale tsc output and any installed dependencies.
+for (const entry of ['server/main.js', 'mcp/stdio.js']) {
+  mkdirSync(join(app, 'dist', entry.split('/')[0]), { recursive: true });
+  for (const suffix of ['', '.LEGAL.txt']) {
+    const file = join(root, 'dist', entry + suffix);
+    if (suffix && !existsSync(file)) continue;
+    copyFileSync(file, join(app, 'dist', entry + suffix));
   }
-  if (!p.name) continue;
-  if (
-    forbidden.test(p.name) ||
-    p.gypfile === true ||
-    /node-gyp/.test(JSON.stringify(p.scripts ?? {}))
-  )
-    throw new Error(`生产依赖不得要求 node-gyp：${p.name}`);
-  inventory.push({
-    name: p.name,
-    version: p.version ?? null,
-    license: p.license ?? p.licenses ?? null,
-    repository: p.repository ?? null,
-    packageFile: `app/node_modules/${file}`,
-  });
 }
-
-cpSync(join(root, 'dist'), join(app, 'dist'), { recursive: true });
-cpSync(join(root, '.next'), join(app, '.next'), {
-  recursive: true,
-  filter: (path) =>
-    !['cache', 'dev', 'diagnostics', 'types', 'trace', 'trace-build'].some(
-      (name) => path === join(root, '.next', name),
-    ),
-});
+cpSync(join(root, 'out'), join(app, 'out'), { recursive: true });
 mkdirSync(join(app, '.runtime-build'));
 for (const [name, info] of Object.entries<any>(runtimeManifest)) {
   const source = archivePath(join(root, '.runtime-build'), name);
@@ -134,17 +102,6 @@ for (const [name, info] of Object.entries<any>(runtimeManifest)) {
   copyFileSync(source, destination);
 }
 copyFileSync(join(root, '.runtime-build/manifest.json'), join(app, '.runtime-build/manifest.json'));
-if (existsSync(join(root, 'public')))
-  cpSync(join(root, 'public'), join(app, 'public'), { recursive: true });
-// Keep production config aligned with the source config, removing only TypeScript syntax.
-const config = readFileSync(join(root, 'next.config.ts'), 'utf8')
-  .replace(/^import type .*;\r?\n/m, '')
-  .replace('const config: NextConfig', 'const config')
-  .replace(
-    'export default config;',
-    'config.outputFileTracingRoot = import.meta.dirname;\nexport default config;',
-  );
-writeFileSync(join(app, 'next.config.mjs'), config);
 writeFileSync(
   join(app, 'package.json'),
   JSON.stringify(
@@ -154,7 +111,6 @@ writeFileSync(
       private: true,
       type: 'module',
       license: 'MIT',
-      dependencies: pkg.dependencies,
     },
     null,
     2,
@@ -198,6 +154,7 @@ for (const file of ['node.exe', 'LICENSE'])
 
 const notices = join(bundle, 'THIRD-PARTY-NOTICES');
 cpSync(join(root, 'packaging/licenses'), notices, { recursive: true });
+const inventory = collectLicenses(root, notices);
 const sources = JSON.parse(readFileSync(join(notices, 'sources.json'), 'utf8'));
 for (const source of sources) {
   const licensePath = join(notices, source.file);
@@ -213,14 +170,7 @@ const numpy = Object.keys(runtimeManifest).find((name) => /^numpy-.*\.whl$/.test
 await extractZip(join(app, '.runtime-build', numpy), join(notices, 'numpy'), (name) =>
   /licen[sc]e|copying|notice/i.test(name),
 );
-writeFileSync(
-  join(notices, 'dependencies.json'),
-  JSON.stringify(
-    inventory.sort((a, b) => a.name.localeCompare(b.name)),
-    null,
-    2,
-  ) + '\n',
-);
+writeFileSync(join(notices, 'dependencies.json'), JSON.stringify(inventory, null, 2) + '\n');
 copyFileSync(
   join(root, 'packaging/THIRD-PARTY-NOTICES.md'),
   join(bundle, 'THIRD-PARTY-NOTICES.md'),
@@ -240,6 +190,7 @@ const manifest: any = {
   sourceCommit: git(['rev-parse', 'HEAD']),
   sourceDirty: !!git(['status', '--porcelain']),
   builtAt: new Date().toISOString(),
+  packaging: 'static-export-and-bundles',
   files: {},
 };
 for (const file of filesIn(bundle))
@@ -248,7 +199,13 @@ for (const file of filesIn(bundle))
     sha256: await sha256(join(bundle, file)),
   };
 writeFileSync(join(bundle, 'release-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-console.log(`压缩 ${Object.keys(manifest.files).length} 个普通文件；不包含开发缓存或用户数据`);
+const totalBytes = Object.values<{ size: number }>(manifest.files).reduce(
+  (sum, file) => sum + file.size,
+  0,
+);
+console.log(
+  `压缩 ${Object.keys(manifest.files).length} 个普通文件，解压 ${(totalBytes / 1024 ** 2).toFixed(1)} MiB；不包含 node_modules、开发缓存或用户数据`,
+);
 await createZip(bundle, zipPath, name);
 writeFileSync(zipPath + '.sha256', `${await sha256(zipPath)}  ${name}.zip\n`);
 copyFileSync(join(bundle, 'release-manifest.json'), join(output, name + '.manifest.json'));

@@ -8,10 +8,11 @@ import { createApplication } from './http.js';
 import { publishConnection } from './connection.js';
 import { installShutdown } from './shutdown.js';
 import { openBrowser } from './installation.js';
+import { staticPages } from './static-pages.js';
 
 if (Number(process.versions.node.split('.')[0]) !== 24)
   throw new Error('本项目要求 Node.js 24 LTS，请先切换项目 Node 版本。');
-const dev = process.argv.includes('--dev');
+const dev = process.env.NODE_ENV !== 'production' && process.argv.includes('--dev');
 const root = dataRoot();
 const store = new Store(root, true);
 type Web = {
@@ -42,12 +43,18 @@ try {
   // The custom launcher owns signal handling, including startup failures.
   process.env.NEXT_MANUAL_SIG_HANDLE = '1';
   const projectRoot = resolve(fileURLToPath(new URL('../../', import.meta.url)));
-  const next = createRequire(import.meta.url)('next') as (
-    options: NextServerOptions & { webpack: boolean },
-  ) => Web;
-  web = next({ dev, dir: projectRoot, hostname: '127.0.0.1', webpack: true });
-  await web.prepare();
-  app = createApplication(store, { dev, handlePage: web.getRequestHandler() });
+  let handlePage;
+  if (dev) {
+    const next = createRequire(import.meta.url)('next') as (
+      options: NextServerOptions & { webpack: boolean },
+    ) => Web;
+    web = next({ dev, dir: projectRoot, hostname: '127.0.0.1', webpack: true });
+    await web.prepare();
+    handlePage = web.getRequestHandler();
+  } else {
+    handlePage = staticPages(resolve(projectRoot, 'out'));
+  }
+  app = createApplication(store, { dev, handlePage });
   await app.listen();
   disposeConnection = publishConnection(root, app.origin, app.mcpToken);
   const bootstrapUrl = `${app.origin}/#bootstrap=${app.mintBootstrap()}`;

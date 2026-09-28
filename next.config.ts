@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 const config: NextConfig = {
+  output: 'export',
   poweredByHeader: false,
   devIndicators: false,
   images: { unoptimized: true },

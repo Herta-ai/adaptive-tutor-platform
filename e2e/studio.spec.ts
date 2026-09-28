@@ -2,23 +2,19 @@ import { test, expect } from '@playwright/test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createRequire } from 'node:module';
+import { staticPages } from '../src/server/static-pages';
 import { Store, uuid } from '../src/storage/database';
 import { createGeometryExample } from '../src/domain/examples';
 import { createApplication } from '../src/server/http';
-let root: string, store: Store, app: ReturnType<typeof createApplication>, web: any;
+let root: string, store: Store, app: ReturnType<typeof createApplication>;
 test.beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), 'tutor-e2e-'));
   store = new Store(root);
-  const next = createRequire(import.meta.url)('next');
-  web = next({ dev: false, dir: process.cwd() });
-  await web.prepare();
-  app = createApplication(store, { handlePage: web.getRequestHandler() });
+  app = createApplication(store, { handlePage: staticPages(join(process.cwd(), 'out')) });
   await app.listen();
 });
 test.afterAll(async () => {
   await app?.close();
-  await web?.close();
   store?.close();
   if (root) rmSync(root, { recursive: true, force: true });
 });

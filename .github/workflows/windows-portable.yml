@@ -50,10 +50,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
-      - name: Build portable ZIP
+      - name: Build portable ZIP without node_modules
         run: pnpm package:win --version "$env:RELEASE_VERSION"
       - name: Verify extracted ZIP using bundled Node and isolated user home
         run: pnpm verify:portable --zip "releases/adaptive-tutor-platform-v$env:RELEASE_VERSION-win-x64.zip"
+      - name: Report artifact size
+        shell: pwsh
+        run: |
+          $report = Get-Content "releases/adaptive-tutor-platform-v$env:RELEASE_VERSION-win-x64.zip.verification.json" -Raw | ConvertFrom-Json
+          "| ZIP MiB | Unpacked MiB | Files |" >> $env:GITHUB_STEP_SUMMARY
+          "| ---: | ---: | ---: |" >> $env:GITHUB_STEP_SUMMARY
+          "| $([math]::Round($report.size.zipBytes / 1MB, 1)) | $([math]::Round($report.size.unpackedBytes / 1MB, 1)) | $($report.size.fileCount) |" >> $env:GITHUB_STEP_SUMMARY
       - name: Browser regression
         run: pnpm test:e2e
       - uses: actions/upload-artifact@v4

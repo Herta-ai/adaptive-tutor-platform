@@ -12,7 +12,7 @@
     "runtimes:build": "tsx scripts/build-runtimes.ts",
     "runtimes:prepare": "tsx scripts/build-runtimes.ts --numpy",
     "dev": "tsx src/server/main.ts --dev",
-    "build": "tsx scripts/build-runtimes.ts && next build --webpack && tsc --project tsconfig.server.json",
+    "build": "tsx scripts/build-runtimes.ts && next build --webpack && tsx scripts/build-server.ts",
     "start": "node dist/server/main.js",
     "mcp": "tsx src/mcp/stdio.ts",
     "typecheck": "tsc --noEmit",

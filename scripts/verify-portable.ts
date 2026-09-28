@@ -4,6 +4,8 @@ import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { chromium, expect } from '@playwright/test';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { archivePath, extractZip, filesIn, sha256 } from './release/files.js';
 
 const index = process.argv.indexOf('--zip');
@@ -27,6 +29,10 @@ if (files.length !== Object.keys(manifest.files).length + 1)
   throw new Error('存在未登记的发行文件');
 if (files.some((name) => /^app\/\.next\/(cache|dev)\//.test(name)))
   throw new Error('包内存在开发缓存');
+if (files.some((name) => name.split('/').includes('node_modules') || name.startsWith('app/.next/')))
+  throw new Error('便携包不得包含 node_modules 或 Next 服务端产物');
+for (const name of ['app/out/index.html', 'app/dist/server/main.js', 'app/dist/mcp/stdio.js'])
+  if (!files.includes(name)) throw new Error(`缺少独立构建产物：${name}`);
 const home = join(work, '隔离 用户');
 mkdirSync(home);
 const dataRoot = join(home, '.herta-ai/adaptive-tutor-platform');
@@ -107,6 +113,11 @@ const report: Record<string, unknown> = {
   zipSha256: expectedHash,
   startedAt: new Date().toISOString(),
   checks: [],
+  size: {
+    zipBytes: statSync(zip).size,
+    unpackedBytes: files.reduce((sum, name) => sum + statSync(join(bundle, name)).size, 0),
+    fileCount: files.length,
+  },
   manualPending: [
     '干净 Windows 11 用户环境',
     '双击 start.cmd、手按 Ctrl+C 与浏览器自动打开',
@@ -116,11 +127,32 @@ const report: Record<string, unknown> = {
 const checks = report.checks as string[];
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 try {
-  checks.push('ZIP hash、全部文件 hash、无符号链接与开发缓存');
+  checks.push('ZIP hash、全部文件 hash、无符号链接、node_modules 与 Next 服务端产物');
   const first = start();
   const url = await first.ready;
   if (!existsSync(join(dataRoot, 'runtime/writer.lock'))) throw new Error('测试未使用隔离用户目录');
   checks.push('中文空格路径、不同 cwd、包内 Node、PATH 无 Node/pnpm/agy');
+  const mcp = new Client({ name: 'portable-verifier', version: '1.0.0' });
+  try {
+    await mcp.connect(
+      new StdioClientTransport({
+        command: node,
+        args: [join(bundle, 'app/dist/mcp/stdio.js')],
+        cwd: home,
+        env: Object.fromEntries(
+          Object.entries(env).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        ),
+        stderr: 'pipe',
+      }),
+    );
+    const { tools } = await mcp.listTools();
+    if (!tools.length) throw new Error('独立 MCP bundle 未返回工具');
+    checks.push('无 node_modules 的 MCP stdio 握手与工具列表');
+  } finally {
+    await mcp.close();
+  }
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   const context = await browser.newContext();
   const blocked: string[] = [];

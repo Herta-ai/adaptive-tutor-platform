@@ -1,0 +1,26 @@
+{
+  "version": "0.1.0-alpha.2",
+  "zipSha256": "fef4a5c470921fed309c4e23a63d62d87983d4f5df086ae1c0306521e09535d0",
+  "startedAt": "2026-09-28T07:04:20.946Z",
+  "checks": [
+    "ZIP hash、全部文件 hash、无符号链接、node_modules 与 Next 服务端产物",
+    "中文空格路径、不同 cwd、包内 Node、PATH 无 Node/pnpm/agy",
+    "无 node_modules 的 MCP stdio 握手与工具列表",
+    "离线启动与当前安装目录 MCP 注册命令",
+    "阻断非回环浏览器网络下 JS/SQL/Python/NumPy 实际计算",
+    "真实进程强杀后重新启动并恢复单写锁",
+    "合成 SIGINT 正常退出与锁/connection 清理"
+  ],
+  "size": {
+    "zipBytes": 47034425,
+    "unpackedBytes": 114882788,
+    "fileCount": 841
+  },
+  "manualPending": [
+    "干净 Windows 11 用户环境",
+    "双击 start.cmd、手按 Ctrl+C 与浏览器自动打开",
+    "真实 agy 登录/MCP 注册/额度联调"
+  ],
+  "status": "passed",
+  "finishedAt": "2026-09-28T07:04:43.649Z"
+}

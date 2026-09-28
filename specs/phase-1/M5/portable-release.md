@@ -21,6 +21,17 @@
 
 ## 验证
 
+2026-09-28 按需打包验证：页面改为 Next 静态导出，生产服务和 MCP 用 esbuild 分别打包；发行包不含 `node_modules`、`.next` 或依赖安装脚本。开发时仍使用 Next。第三方许可从已安装的生产依赖图单独收集。
+
+| 本地产物 | ZIP | 解压后（含清单） | 文件数 |
+| --- | ---: | ---: | ---: |
+| 原 alpha.1 | 234,412,447 bytes（223.6 MiB） | 821,870,320 bytes（783.8 MiB） | 24,091 |
+| 新 alpha.2 | 47,034,425 bytes（44.9 MiB） | 114,882,788 bytes（109.6 MiB） | 841 |
+
+ZIP 减少约 80%，解压大小减少约 86%，文件数减少约 97%。Node 和离线 WASM/NumPy 继续随包提供。完整最终 ZIP 验收通过，新增无 `node_modules` 检查和包内 Node 启动 MCP stdio 的实际握手/工具列表验证；原有离线计算、中文/空格路径和强杀/退出清理均通过。报告见 [portable-bundled-verification.json](portable-bundled-verification.json)。
+
+Node 24.10.0 下生产构建、类型检查、14 个 Vitest 文件共 127 项测试及 8 项 Edge 回归通过；随后补充许可收集回归，相关 2 个测试文件共 13 项和类型检查再次通过。新包 SHA-256 为 `fef4a5c470921fed309c4e23a63d62d87983d4f5df086ae1c0306521e09535d0`，清单如实记录 `sourceDirty=true`；本地验证未执行 GitHub CI 或发布 Release。CI 已增加产物体积摘要，并继续验收最终 ZIP。
+
 2026-09-27 实际记录：
 
 | 规格 | 实现与证据 | 状态 |
