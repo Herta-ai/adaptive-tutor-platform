@@ -22,9 +22,9 @@ const option = (name: string) => {
   const index = process.argv.indexOf(name);
   return index < 0 ? undefined : process.argv[index + 1];
 };
-const version = option('--version') ?? `${pkg.version}-alpha.1`;
-if (!/^\d+\.\d+\.\d+-[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*$/.test(version))
-  throw new Error('当前仅发布开发预览，请使用类似 0.1.0-alpha.1 的版本');
+const version = option('--version') ?? pkg.version;
+if (!/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*)?$/.test(version))
+  throw new Error('请使用合法的语义版本（例如 0.1.0 或 0.1.0-alpha.1）');
 if (
   process.platform !== 'win32' ||
   process.arch !== 'x64' ||

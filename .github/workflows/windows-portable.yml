@@ -10,9 +10,7 @@ on:
         type: string
   push:
     tags:
-      - 'v*-alpha.*'
-      - 'v*-beta.*'
-      - 'v*-rc.*'
+      - 'v*'
 
 permissions:
   contents: read
@@ -45,7 +43,7 @@ jobs:
         shell: pwsh
         run: |
           $version = $env:RELEASE_VERSION -replace '^v', ''
-          if ($version -notmatch '^\d+\.\d+\.\d+-(alpha|beta|rc)\.\d+$') { throw 'Only preview versions are supported.' }
+          if ($version -notmatch '^\d+\.\d+\.\d+(-[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?$') { throw "Invalid release version: $version" }
           "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
@@ -93,8 +91,15 @@ jobs:
         with:
           name: windows-portable
           path: releases
-      - name: Create draft prerelease (never auto-publish)
+      - name: Create release
         shell: bash
         run: |
           version="${RELEASE_VERSION#v}"
-          gh release create "v$version" releases/* --target "$RELEASE_COMMIT" --title "知序 v$version · Windows 便携预览" --draft --prerelease --notes-file packaging/release-notes.md
+          if [[ "$version" =~ - ]]; then
+            PRERELEASE_FLAG="--prerelease"
+            TITLE="知序 v$version · Windows 便携预览"
+          else
+            PRERELEASE_FLAG=""
+            TITLE="知序 v$version · Windows 便携版"
+          fi
+          gh release create "v$version" releases/* --target "$RELEASE_COMMIT" --title "$TITLE" --draft $PRERELEASE_FLAG --notes-file packaging/release-notes.md
