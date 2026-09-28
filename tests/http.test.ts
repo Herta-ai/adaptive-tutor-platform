@@ -1,4 +1,4 @@
-import { afterEach, describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -21,6 +21,32 @@ afterEach(async () => {
   for (const f of cleanup.splice(0)) await f();
 });
 describe('A17/A30 本地服务边界', () => {
+  it('关闭服务时同步清理 SSE 轮询，不依赖延迟的连接 close 事件', async () => {
+    const { app, store } = await setup();
+    store.put('course', { id: 'course', revision: 1 });
+    const bootstrap = await fetch(app.origin + '/api/v1/bootstrap', {
+      method: 'POST',
+      body: JSON.stringify({ token: app.mintBootstrap() }),
+    });
+    const cookie = bootstrap.headers.get('set-cookie')!.split(';')[0];
+    await bootstrap.json();
+    // Suppress the response's close handler to model delayed socket cleanup.
+    app.server.on('request', (req, res) => {
+      if (req.url?.startsWith('/api/v1/events')) res.removeAllListeners('close');
+    });
+    const events = vi.spyOn(store, 'events');
+    const response = await fetch(app.origin + '/api/v1/events?courseId=course', {
+      headers: { cookie },
+    });
+    expect(response.status).toBe(200);
+    expect(events).toHaveBeenCalled();
+    const disconnected = response.text().catch(() => undefined);
+    await app.close();
+    events.mockClear();
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(events).not.toHaveBeenCalled();
+    await disconnected;
+  });
   it('无会话拒绝，bootstrap 一次消费，写入需要 CSRF', async () => {
     const { app } = await setup();
     expect((await fetch(app.origin + '/api/v1/courses')).status).toBe(401);

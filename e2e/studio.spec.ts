@@ -295,7 +295,14 @@ test('A03/A18 离线示例、实验、独立练习与笔记', async ({ page }) =
   await page.getByRole('textbox', { name: '你的答案' }).fill('12');
   await page.getByRole('button', { name: '提交答案', exact: true }).click();
   await expect(page.getByText('本次答对', { exact: true })).toBeVisible();
+  // Keep the previous input visible while the next assignment is in flight.
+  await page.route('**/api/v1/nodes/*/assignments', async (route) => {
+    const response = await route.fetch();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await route.fulfill({ response });
+  });
   await page.getByRole('button', { name: '下一道独立练习 →' }).click();
+  await expect(page.getByText('面积为 15，高为 5，底是多少？', { exact: true })).toBeVisible();
   await page.getByRole('textbox', { name: '你的答案' }).fill('6');
   await page.getByRole('button', { name: '提交答案', exact: true }).click();
   await expect(page.getByText('独立作答证据 2/2 ✓ 达标')).toBeVisible();

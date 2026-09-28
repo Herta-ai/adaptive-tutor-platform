@@ -66,6 +66,7 @@ export function createApplication(
     browserToken = secret(),
     csrf = secret();
   const bootstraps = new Map<string, number>();
+  const eventStreams = new Set<() => void>();
   let origin = '';
   store.maintainEvents();
   const maintenance = setInterval(() => {
@@ -793,10 +794,13 @@ export function createApplication(
         poll();
         const timer = setInterval(poll, 200),
           heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15000);
-        res.on('close', () => {
+        const cleanup = () => {
           clearInterval(timer);
           clearInterval(heartbeat);
-        });
+          eventStreams.delete(cleanup);
+        };
+        eventStreams.add(cleanup);
+        res.on('close', cleanup);
         return;
       }
       throw new AppError('NOT_FOUND', '接口不存在', 404);
@@ -845,6 +849,9 @@ export function createApplication(
       }),
     close: async () => {
       clearInterval(maintenance);
+      // Socket close events can arrive after server.close() resolves.
+      // Stop database polling before callers are allowed to close the store.
+      for (const cleanup of eventStreams) cleanup();
       const closed = new Promise<void>((resolve) => server.close(() => resolve()));
       server.closeAllConnections();
       try {
