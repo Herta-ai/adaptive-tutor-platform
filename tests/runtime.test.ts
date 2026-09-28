@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NativeStream, type NativeActivity } from '../src/runtime/antigravity.js';
+import { NativeStream, isCompatibleVersion, type NativeActivity } from '../src/runtime/antigravity.js';
 describe('A02/A13 原生协议', () => {
   it('步骤进度只保留类别/状态，重复文本增量去重且不暴露工具或推理原文', () => {
     const activities: NativeActivity[] = [];
@@ -71,5 +71,17 @@ describe('A02/A13 原生协议', () => {
     );
     expect(delta).toEqual([]);
     expect(() => s.push(Buffer.alloc(1024 * 1024 + 1, 65))).toThrow();
+  });
+  it('支持 >= 1.2.0 版本，拒绝低版本或非法版本字符串', () => {
+    expect(isCompatibleVersion('1.2.0')).toBe(true);
+    expect(isCompatibleVersion('1.2.1')).toBe(true);
+    expect(isCompatibleVersion('1.2.11')).toBe(true);
+    expect(isCompatibleVersion('1.3.0')).toBe(true);
+    expect(isCompatibleVersion('2.0.0')).toBe(true);
+    expect(isCompatibleVersion('1.1.9')).toBe(false);
+    expect(isCompatibleVersion('0.9.0')).toBe(false);
+    expect(isCompatibleVersion(null)).toBe(false);
+    expect(isCompatibleVersion('')).toBe(false);
+    expect(isCompatibleVersion('invalid')).toBe(false);
   });
 });

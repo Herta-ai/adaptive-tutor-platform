@@ -148,6 +148,15 @@ export function findCli() {
   }
   return undefined;
 }
+export function isCompatibleVersion(version: string | null | undefined): boolean {
+  if (!version) return false;
+  const match = version.match(/(\d+)\.(\d+)(?:\.(\d+))?/);
+  if (!match) return false;
+  const major = parseInt(match[1], 10);
+  const minor = parseInt(match[2], 10);
+  return major > 1 || (major === 1 && minor >= 2);
+}
+
 export function detectRuntime() {
   const path = findCli();
   if (!path) return { state: 'not_installed', version: null, executable: null };
@@ -159,7 +168,7 @@ export function detectRuntime() {
   });
   const version = result.stdout?.trim();
   return {
-    state: result.status === 0 && version === '1.2.11' ? 'unchecked' : 'incompatible',
+    state: result.status === 0 && isCompatibleVersion(version) ? 'unchecked' : 'incompatible',
     version: version ?? null,
     executable: path,
   };

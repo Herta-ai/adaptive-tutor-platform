@@ -1,11 +1,17 @@
 'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import { capability, validateParameters } from '../capabilities/registry';
 import dynamic from 'next/dynamic';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Play, Pause, StepForward, RotateCcw, Bookmark, MessageSquareQuote } from 'lucide-react';
+
 const Scene = dynamic(() => import('./scene'), {
   ssr: false,
-  loading: () => <p>正在加载三维视图…</p>,
+  loading: () => <p className="text-xs text-muted-foreground p-8 text-center">正在加载三维视图…</p>,
 });
+
 export function Demo({
   block,
   onContext,
@@ -29,10 +35,12 @@ export function Demo({
     [visible, setVisible] = useState(false),
     [result, setResult] = useState<ReturnType<typeof cap.compute>>({ values: {} }),
     [error, setError] = useState('');
+
   const container = useRef<HTMLElement | null>(null),
     worker = useRef<Worker | null>(null),
     current = useRef({ revision, step });
   current.current = { revision, step };
+
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
       const show = entries[0].isIntersecting;
@@ -42,6 +50,7 @@ export function Demo({
     if (container.current) observer.observe(container.current);
     return () => observer.disconnect();
   }, []);
+
   useEffect(() => {
     if (!visible) return;
     const w = new Worker(new URL('../capabilities/demo-worker.ts', import.meta.url));
@@ -61,6 +70,7 @@ export function Demo({
       worker.current = null;
     };
   }, [visible]);
+
   useEffect(() => {
     worker.current?.postMessage({
       templateId: cap.id,
@@ -70,6 +80,7 @@ export function Demo({
       step,
     });
   }, [visible, cap.id, cap.version, parameters, step, revision]);
+
   useEffect(() => {
     if (!playing) return;
     const t = setInterval(
@@ -85,6 +96,7 @@ export function Demo({
     );
     return () => clearInterval(t);
   }, [playing]);
+
   useEffect(() => {
     const pause = () => {
       if (document.hidden) setPlaying(false);
@@ -92,6 +104,7 @@ export function Demo({
     document.addEventListener('visibilitychange', pause);
     return () => document.removeEventListener('visibilitychange', pause);
   }, []);
+
   const report = (p = parameters, s = step, r = revision) =>
     onContext?.({
       templateId: cap.id,
@@ -105,6 +118,7 @@ export function Demo({
           : {},
       step: s,
     });
+
   const points = result.points;
   let plot = '';
   if (points?.length) {
@@ -130,14 +144,19 @@ export function Demo({
         )
         .join(' ');
   }
+
   return (
-    <section ref={container} className="demo" aria-label={cap.title}>
-      <div className="demo-head">
-        <span className="eyebrow">交互实验</span>
-        <span className="badge">{cap.mode === 'computed' ? '真实计算' : '简化模型'}</span>
+    <section ref={container} className="demo rounded-2xl border border-border bg-card p-6 my-6 shadow-paper" aria-label={cap.title}>
+      <div className="demo-head flex justify-between items-center mb-3">
+        <span className="eyebrow text-[11px] font-semibold tracking-wider text-primary">交互实验</span>
+        <Badge variant={cap.mode === 'computed' ? 'default' : 'secondary'} className="text-[11px]">
+          {cap.mode === 'computed' ? '真实计算' : '简化模型'}
+        </Badge>
       </div>
-      <h3>{cap.title}</h3>
-      <p className="muted">{cap.description}</p>
+
+      <h3 className="text-base font-semibold text-foreground mb-1">{cap.title}</h3>
+      <p className="muted text-xs text-muted-foreground leading-relaxed mb-4">{cap.description}</p>
+
       {(cap.type === 'scene3d' || cap.type === 'molecule') && visible && (
         <Scene
           positions={result.positions}
@@ -160,11 +179,13 @@ export function Demo({
           }}
         />
       )}
+
       <svg
         style={{ display: cap.type === 'scene3d' || cap.type === 'molecule' ? 'none' : undefined }}
         viewBox="0 0 520 260"
         role="img"
         aria-label={block.alt ?? cap.description}
+        className="rounded-xl border border-border/80 bg-[#f7faf5] w-full max-h-[280px]"
       >
         <defs>
           <pattern
@@ -205,17 +226,21 @@ export function Demo({
           );
         })}
       </svg>
+
       {error && (
-        <p role="alert">
+        <p role="alert" className="text-xs text-destructive mt-2">
           {error} {block.alt}
         </p>
       )}
-      <div className="parameters">
+
+      <div className="parameters flex flex-wrap gap-4 my-5 p-4 rounded-xl bg-secondary/50 border border-border/60">
         {Object.entries(cap.parameters).map(([key, p]) => (
-          <label key={key}>
-            <span>
-              {key}
-              <strong>{parameters[key]}</strong>
+          <label key={key} className="flex-1 min-w-[120px] text-xs">
+            <span className="flex justify-between items-center text-foreground font-medium mb-1">
+              <span>{key}</span>
+              <strong className="font-mono text-primary text-xs bg-card px-1.5 py-0.5 rounded border border-border/60">
+                {parameters[key]}
+              </strong>
             </span>
             <input
               aria-label={key}
@@ -224,6 +249,7 @@ export function Demo({
               max={p.max}
               step={p.step}
               value={parameters[key]}
+              className="w-full accent-primary cursor-pointer"
               onChange={(e) => {
                 const next = { ...parameters, [key]: Number(e.target.value) };
                 setParameters(next);
@@ -234,26 +260,45 @@ export function Demo({
           </label>
         ))}
       </div>
-      <div className="observations">
+
+      <div className="observations flex flex-wrap gap-3 border-t border-border pt-4 my-3">
         {Object.entries(result.values).map(([key, value]) => (
-          <span key={key}>
+          <span key={key} className="flex-1 min-w-[80px] text-[11px] text-muted-foreground">
             {key}
-            <strong>{Number(value.toPrecision(5))}</strong>
+            <strong className="block font-serif text-primary text-xl font-normal mt-0.5">
+              {Number(value.toPrecision(5))}
+            </strong>
           </span>
         ))}
       </div>
-      <div className="toolbar">
-        <button onClick={() => setPlaying(!playing)}>{playing ? '暂停' : '播放'}</button>
-        <button
+
+      <div className="toolbar flex items-center gap-2 flex-wrap mt-4 pt-3 border-t border-border/60">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs h-8"
+          onClick={() => setPlaying(!playing)}
+        >
+          {playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+          {playing ? '暂停' : '播放'}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs h-8"
           onClick={() => {
             setPlaying(false);
             setStep(Math.min(step + 1, 100));
             report(parameters, Math.min(step + 1, 100));
           }}
         >
+          <StepForward className="h-3 w-3" />
           单步
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs h-8"
           onClick={() => {
             setPlaying(false);
             setStep(0);
@@ -262,47 +307,70 @@ export function Demo({
             setRevision(revision + 1);
           }}
         >
+          <RotateCcw className="h-3 w-3" />
           复位
-        </button>
-        <span className="muted">步骤 {step}/100</span>
-        <button className="link" onClick={() => report()}>
-          引用实验提问 ↗
-        </button>
-        {onSave && (
-          <button
-            disabled={saving}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                await onSave({
-                  templateId: cap.id,
-                  templateVersion: cap.version,
-                  parameters,
-                  selectedIds,
-                  step,
-                });
-              } catch (e) {
-                setError(e instanceof Error ? e.message : '保存失败');
-              } finally {
-                setSaving(false);
-              }
-            }}
+        </Button>
+        <span className="muted text-xs text-muted-foreground ml-1">步骤 {step}/100</span>
+
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs text-primary border-primary/20 hover:bg-secondary hover:text-primary h-8 font-medium whitespace-nowrap cursor-pointer shadow-none"
+            onClick={() => report()}
           >
-            {saving ? '保存中…' : '保存实验快照'}
-          </button>
-        )}
+            <MessageSquareQuote className="h-3.5 w-3.5 shrink-0" />
+            <span>引用实验提问 ↗</span>
+          </Button>
+
+          {onSave && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              className="gap-1.5 text-xs h-8 whitespace-nowrap"
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await onSave({
+                    templateId: cap.id,
+                    templateVersion: cap.version,
+                    parameters,
+                    selectedIds,
+                    step,
+                  });
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : '保存失败');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              <Bookmark className="h-3.5 w-3.5" />
+              {saving ? '保存中…' : '保存实验快照'}
+            </Button>
+          )}
+        </div>
       </div>
-      {selectedIds.length > 0 && <p>已选择：{selectedIds.join('、')}</p>}
+
+      {selectedIds.length > 0 && (
+        <p className="text-xs text-muted-foreground mt-3">已选择：{selectedIds.join('、')}</p>
+      )}
+
       {result.steps && (
-        <ol>
+        <ol className="mt-3 space-y-1 text-xs font-mono text-muted-foreground">
           {result.steps.map((s, i) => (
             <li key={i}>
-              <code>{s}</code>
+              <code className="bg-secondary px-2 py-0.5 rounded text-[11px]">{s}</code>
             </li>
           ))}
         </ol>
       )}
-      <small>{cap.reference} 实验操作不计入掌握证据。</small>
+
+      <small className="block text-[11px] text-muted-foreground/80 mt-3 pt-2 border-t border-border/40">
+        {cap.reference} 实验操作不计入掌握证据。
+      </small>
     </section>
   );
 }
