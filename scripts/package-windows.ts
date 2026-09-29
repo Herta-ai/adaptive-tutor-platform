@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { archivePath, filesIn, sha256, createZip, extractZip } from './release/files.js';
 import { collectLicenses } from './release/licenses.js';
+import { releaseVersion } from './release/version.mjs';
 
 const root = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
@@ -22,9 +23,7 @@ const option = (name: string) => {
   const index = process.argv.indexOf(name);
   return index < 0 ? undefined : process.argv[index + 1];
 };
-const version = option('--version') ?? pkg.version;
-if (!/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*)?$/.test(version))
-  throw new Error('请使用合法的语义版本（例如 0.1.0 或 0.1.0-alpha.1）');
+const { version, prerelease } = releaseVersion(option('--version') ?? pkg.version);
 if (
   process.platform !== 'win32' ||
   process.arch !== 'x64' ||
@@ -182,7 +181,7 @@ const manifest: any = {
   schemaVersion: 1,
   name: pkg.name,
   version,
-  preview: true,
+  preview: prerelease,
   platform: 'win32',
   arch: 'x64',
   node: node.version,

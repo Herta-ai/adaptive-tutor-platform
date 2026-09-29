@@ -1,12 +1,11 @@
-name: Windows portable preview
+name: Windows portable release
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Preview version (for example 0.1.0-alpha.1)
+        description: Release version (for example 0.1.1 or 0.1.2-rc.1)
         required: true
-        default: 0.1.0-alpha.1
         type: string
   push:
     tags:
@@ -23,6 +22,9 @@ jobs:
   build:
     runs-on: windows-2025
     timeout-minutes: 40
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
@@ -37,17 +39,13 @@ jobs:
           node-version-file: .node-version
       - uses: pnpm/action-setup@v4
         with:
-          version: 11.25.0
           run_install: false
-      - name: Validate preview version
-        shell: pwsh
-        run: |
-          $version = $env:RELEASE_VERSION -replace '^v', ''
-          if ($version -notmatch '^\d+\.\d+\.\d+(-[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?$') { throw "Invalid release version: $version" }
-          "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+      - name: Validate release version
+        id: version
+        run: node scripts/release/version.mjs
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm test
+      - run: pnpm test --reporter=default --reporter=junit --outputFile.junit=.release-work/unit-tests.xml
       - name: Build portable ZIP without node_modules
         run: pnpm package:win --version "$env:RELEASE_VERSION"
       - name: Verify extracted ZIP using bundled Node and isolated user home
@@ -71,7 +69,9 @@ jobs:
         if: failure()
         with:
           name: verification-failure
+          include-hidden-files: true
           path: |
+            .release-work/unit-tests.xml
             releases/*.verification.json
             test-results/
 
@@ -83,7 +83,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
+      RELEASE_VERSION: ${{ needs.build.outputs.version }}
+      RELEASE_PRERELEASE: ${{ needs.build.outputs.prerelease }}
       RELEASE_COMMIT: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
@@ -91,15 +92,15 @@ jobs:
         with:
           name: windows-portable
           path: releases
-      - name: Create release
+      - name: Create draft release
         shell: bash
         run: |
-          version="${RELEASE_VERSION#v}"
-          if [[ "$version" =~ - ]]; then
-            PRERELEASE_FLAG="--prerelease"
+          version="$RELEASE_VERSION"
+          flags=(--draft)
+          if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
+            flags+=(--prerelease)
             TITLE="知序 v$version · Windows 便携预览"
           else
-            PRERELEASE_FLAG=""
             TITLE="知序 v$version · Windows 便携版"
           fi
-          gh release create "v$version" releases/* --target "$RELEASE_COMMIT" --title "$TITLE" --draft $PRERELEASE_FLAG --notes-file packaging/release-notes.md
+          gh release create "v$version" releases/* --target "$RELEASE_COMMIT" --title "$TITLE" "${flags[@]}" --notes-file packaging/release-notes.md

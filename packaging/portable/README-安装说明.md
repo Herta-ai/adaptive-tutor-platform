@@ -1,6 +1,6 @@
-# 知序 · Windows 便携开发预览
+# 知序 · Windows 便携版
 
-适用于 Windows 11 x64、Edge/Chrome。此为开发预览，完整一期全学科覆盖仍在开发。
+适用于 Windows 11 x64、Edge/Chrome。版本是否为预发布以 Release 标记及 release-manifest.json 的 preview 字段为准；完整一期全学科覆盖仍在开发。
 
 ## 启动
 

@@ -1,4 +1,4 @@
-Windows 11 x64 开发预览，使用 Edge/Chrome。完整一期验收尚未完成。
+Windows 11 x64 便携版，使用 Edge/Chrome。版本是否为预发布以 Release 标记为准；完整一期验收尚未完成。
 
 下载 ZIP 并完整解压到固定目录，双击 start.cmd。包内包含 Node 24、JS/SQL/Python/NumPy 运行库，无需安装 Node、pnpm 或编译工具。在线功能需自行安装、登录 agy（已验证 1.2.11），并按设置页命令注册 MCP；这些操作不会自动执行。
 
