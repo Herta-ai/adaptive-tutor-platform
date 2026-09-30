@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { z } from 'zod';
-import { Store, uuid, now } from '../storage/database.js';
+import { Store, uuid, now, legacyDatabaseFiles, clearLegacyDatabases } from '../storage/database.js';
 import { Courses } from '../domain/courses.js';
 import { AppError, requireThat } from '../domain/errors.js';
 import { Gateway, type ToolName } from '../mcp/gateway.js';
@@ -19,6 +19,7 @@ import { Remediation } from '../domain/remediation.js';
 import { Transfer } from '../transfer/learn.js';
 import { frameDocument } from '../code-sandbox/frame.js';
 import { mcpRegistrationCommand } from './installation.js';
+import { providers, saveAgentConfig, configured } from '../runtime/config.js';
 
 export const secret = () => randomBytes(32).toString('hex');
 const commandKey = z.strictObject({ clientRequestId: id });
@@ -172,6 +173,8 @@ export function createApplication(
           403,
         );
       const route = path.slice('/api/v1'.length);
+      if (legacyDatabaseFiles(store.root).length && !['/session', '/runtime', '/runtime/config', '/data/reset/status', '/data/reset'].includes(route))
+        throw new AppError('DATA_RESET_REQUIRED', '请先确认清除旧版本数据', 409);
       if (route === '/session' && method === 'GET') {
         json(res, 200, { csrf });
         return;
@@ -187,7 +190,58 @@ export function createApplication(
               .filter((j) => j.kind === 'probe')
               .at(-1)?.resultRef ?? null,
           mcpRegistration: mcpRegistrationCommand(executable ?? undefined),
+          apiConfigured: configured(jobs.config),
+          provider: jobs.config.provider,
+          showModelOutput: jobs.config.showModelOutput,
+          dataResetRequired: legacyDatabaseFiles(store.root).length > 0,
         });
+        return;
+      }
+      if (route === '/runtime/config' && method === 'GET') {
+        json(res, 200, {
+          chatRuntime: jobs.config.chatRuntime,
+          generationRuntime: jobs.config.generationRuntime,
+          provider: jobs.config.provider,
+          showModelOutput: jobs.config.showModelOutput,
+          providers: Object.fromEntries(providers.map((name) => [name, {
+            configured: !!jobs.config.providers[name],
+            model: jobs.config.providers[name]?.model ?? null,
+          }])),
+          configured: configured(jobs.config),
+          setupRequired: !configured(jobs.config),
+        });
+        return;
+      }
+      if (route === '/runtime/config' && method === 'PUT') {
+        const p = z.strictObject({
+          clientRequestId: id,
+          chatRuntime: z.enum(['api', 'antigravity']).optional(),
+          generationRuntime: z.enum(['api', 'antigravity']).optional(),
+          provider: z.enum(providers).optional(),
+          showModelOutput: z.boolean().optional(),
+          providerConfig: z.strictObject({
+            provider: z.enum(providers), model: z.string().min(1).max(200), apiKey: z.string().min(1).max(1000).optional(), baseUrl: z.string().url().optional(),
+          }).optional(),
+        }).parse(await body(req));
+        const next = saveAgentConfig(store.root, {
+          chatRuntime: p.chatRuntime,
+          generationRuntime: p.generationRuntime,
+          provider: p.provider,
+          showModelOutput: p.showModelOutput,
+          providers: p.providerConfig ? { [p.providerConfig.provider]: { model: p.providerConfig.model, apiKey: p.providerConfig.apiKey ?? jobs.config.providers[p.providerConfig.provider]?.apiKey ?? '', baseUrl: p.providerConfig.baseUrl } } : undefined,
+        });
+        jobs.updateConfig(next);
+        json(res, 200, { configured: configured(next), provider: next.provider, showModelOutput: next.showModelOutput });
+        return;
+      }
+      if (route === '/data/reset/status' && method === 'GET') {
+        json(res, 200, { required: legacyDatabaseFiles(store.root).length > 0 });
+        return;
+      }
+      if (route === '/data/reset' && method === 'POST') {
+        const p = z.strictObject({ clientRequestId: id, confirm: z.literal(true) }).parse(await body(req));
+        clearLegacyDatabases(store.root);
+        json(res, 200, store.command('data.reset', p.clientRequestId, p, () => ({ cleared: true })));
         return;
       }
       if (route === '/capabilities' && method === 'GET') {
@@ -427,15 +481,17 @@ export function createApplication(
             })
             .parse(await body(req));
           const shape =
-            p.kind === 'plan_course'
-              ? z.strictObject({})
+              p.kind === 'plan_course'
+              ? z.strictObject({ extraPrompt: z.string().max(4000).optional(), regenerate: z.boolean().optional(), confirm: z.literal(true).optional() })
               : p.kind === 'diagnose'
                 ? z.strictObject({ nodeId: id, attemptIds: z.array(id).min(1).max(20) })
                 : p.kind === 'generate_exercises'
                   ? z.strictObject({ nodeId: id, cycleId: id, objectiveId: id })
-                  : z.strictObject({
+                : z.strictObject({
                       nodeId: id,
                       lessonVersion: z.number().int().nonnegative().optional(),
+                      extraPrompt: z.string().max(4000).optional(),
+                      regenerate: z.boolean().optional(), confirm: z.literal(true).optional(),
                     });
           const payload = shape.parse(p.payload) as any;
           json(
@@ -443,6 +499,9 @@ export function createApplication(
             202,
             store.command('job.create:' + courseId, p.clientRequestId, p, () => {
               courses.revision(courseId, p.expectedRevision);
+              const active = store.list<any>('job', courseId).some((j) => ['queued', 'running', 'validating'].includes(j.state));
+              requireThat(!active || !payload.regenerate, 'COURSE_BUSY', '请先停止当前任务', 409);
+              if (payload.regenerate) jobs.assertCourseIdle(courseId);
               if (payload.nodeId)
                 requireThat(
                   store.must('node', payload.nodeId).courseId === courseId,
@@ -450,6 +509,11 @@ export function createApplication(
                   '节点不属于课程',
                   403,
                 );
+              if (payload.regenerate) {
+                requireThat(payload.confirm === true, 'CONFIRM_REQUIRED', '请确认破坏性操作', 400);
+                if (p.kind === 'plan_course') courses.resetOutline(courseId);
+                else courses.resetNode(payload.nodeId);
+              }
               if (payload.attemptIds)
                 for (const a of payload.attemptIds)
                   requireThat(
@@ -458,6 +522,10 @@ export function createApplication(
                     '作答不属于目标节点',
                     403,
                   );
+              if (payload.extraPrompt) {
+                if (p.kind === 'plan_course') store.put('course', { ...store.must('course', courseId), lastOutlinePrompt: payload.extraPrompt });
+                else store.put('node', { ...store.must('node', payload.nodeId), lastLessonPrompt: payload.extraPrompt });
+              }
               return jobs.enqueue(p.kind, payload, courseId);
             }),
           );

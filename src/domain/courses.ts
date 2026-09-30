@@ -7,6 +7,41 @@ import { capability } from '../capabilities/registry.js';
 
 export class Courses {
   constructor(readonly store: Store) {}
+  resetOutline(courseId: string) {
+    const c = this.store.must('course', courseId);
+    // Keep the course and its session identities so the UI can reconnect after reset;
+    // all generated content, learning state, jobs, contexts and messages are removed.
+    for (const row of this.store.db.prepare("SELECT kind,id FROM entities WHERE course_id=? AND kind NOT IN ('course','session')").all(courseId) as any[])
+      this.store.remove(row.kind, row.id);
+    this.store.db.prepare("DELETE FROM idempotency WHERE instr(scope,?)>0 OR instr(response,?)>0").run(courseId, courseId);
+    this.store.db.prepare('DELETE FROM events WHERE course_id=?').run(courseId);
+    this.store.put('course', { ...c, status: 'draft', revision: c.revision + 1, lastOutlinePrompt: undefined });
+    return this.store.must('course', courseId);
+  }
+  resetNode(nodeId: string) {
+    const node = this.store.must('node', nodeId);
+    const courseId = node.courseId;
+    const wasLocked = this.store.list<any>('edge', courseId).some((e) => e.toNodeId === nodeId && e.active !== false);
+    const contexts = this.store.list<any>('context', courseId).filter((c) => c.nodeId === nodeId).map((c) => c.id);
+    const jobs = this.store.list<any>('job', courseId).filter((j) => j.payload?.nodeId === nodeId || contexts.includes(j.payload?.contextSnapshotId)).map((j) => j.id);
+    const remove = (kind: string, predicate: (v: any) => boolean) => {
+      for (const value of this.store.list<any>(kind, courseId)) if (predicate(value)) this.store.remove(kind, value.id);
+    };
+    for (const id of jobs) this.store.remove('job', id);
+    remove('scope', (v) => jobs.includes(v.requestId));
+    remove('message', (v) => contexts.includes(v.contextSnapshotId) || jobs.includes(v.requestId));
+    remove('context', (v) => contexts.includes(v.id));
+    remove('lesson', (v) => v.nodeId === nodeId);
+    for (const kind of ['exercise', 'assignment', 'attempt', 'diagnosis', 'patch', 'cycle']) remove(kind, (v) => v.nodeId === nodeId);
+    remove('progress', (v) => v.id === nodeId);
+    remove('note', (v) => v.id === nodeId);
+    remove('draft', (v) => v.nodeId === nodeId);
+    this.store.put('node', { ...node, currentLessonVersion: 0, contentStatus: 'not_generated', lastLessonPrompt: undefined });
+    const course = this.store.must<any>('course', courseId);
+    this.store.put('course', { ...course, revision: course.revision + 1 });
+    this.store.put('progress', { id: nodeId, courseId, status: wasLocked ? 'locked' : 'available', masteredOnce: false, reviewStage: 0, bypass: false, cycleId: null });
+    this.store.emit('course.updated', { changedNodeIds: [nodeId] }, courseId);
+  }
   familyId(nodeId: string, familyKey: string) {
     const node = this.store.must('node', nodeId);
     return (
@@ -26,6 +61,7 @@ export class Courses {
         status: 'draft',
         revision: 1,
         createdAt: now(),
+        lastOutlinePrompt: p.outlinePrompt,
       }),
     );
   }
@@ -95,7 +131,7 @@ export class Courses {
   publishLesson(
     nodeId: string,
     input: unknown,
-    provenance: { runtime: string; cliVersion?: string } = { runtime: 'antigravity' },
+    provenance: { runtime: string; cliVersion?: string; model?: string; provider?: string } = { runtime: 'antigravity' },
   ) {
     const n = this.store.must('node', nodeId),
       p = validateLesson(input, n.objectives);

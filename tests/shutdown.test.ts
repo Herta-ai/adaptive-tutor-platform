@@ -62,7 +62,7 @@ it('releases lease when database initialization fails', () => {
   s.close();
   expect(() => open(r)).toThrow('数据库版本');
   expect(existsSync(join(r, 'runtime/writer.lock'))).toBe(false);
-  const repair = new DatabaseSync(join(r, 'tutor.sqlite'));
+  const repair = new DatabaseSync(join(r, 'tutor-v2.sqlite'));
   repair.exec('PRAGMA user_version=1');
   repair.close();
   open(r);

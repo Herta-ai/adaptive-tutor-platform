@@ -6,10 +6,12 @@ import { staticPages } from '../src/server/static-pages';
 import { Store, uuid } from '../src/storage/database';
 import { createGeometryExample } from '../src/domain/examples';
 import { createApplication } from '../src/server/http';
+import { saveAgentConfig } from '../src/runtime/config';
 let root: string, store: Store, app: ReturnType<typeof createApplication>;
 test.beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), 'tutor-e2e-'));
   store = new Store(root);
+  saveAgentConfig(root, { chatRuntime: 'antigravity', generationRuntime: 'antigravity', provider: 'openai', providers: { openai: { model: 'synthetic', apiKey: 'test-key' } } });
   app = createApplication(store, { handlePage: staticPages(join(process.cwd(), 'out')) });
   await app.listen();
 });
@@ -429,4 +431,3 @@ test('学习导师侧边栏支持拖动调整宽度、双击重置与持久化',
   const keyboardAdjustedWidth = await getWidth();
   expect(keyboardAdjustedWidth).toBe(resetWidth + 20);
 });
-

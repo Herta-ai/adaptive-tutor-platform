@@ -243,8 +243,8 @@ queued -> running -> validating -> completed
 
 ```text
 ~/.herta-ai/adaptive-tutor-platform/
-  tutor.sqlite             # 课程/草稿/学习状态/历史/消息/事件，唯一结构化状态源
-  tutor.sqlite-wal / -shm   # SQLite 自己管理，不单独清理
+  tutor-v2.sqlite             # 课程/草稿/学习状态/历史/消息/事件，唯一结构化状态源
+  tutor-v2.sqlite-wal / -shm   # SQLite 自己管理，不单独清理
   assets/                  # 持久资源：图片、模型、分子、数据集、快照产物，按内容哈希管理
   jobs/<requestId>/<runId>/ # CLI 工作目录、Schema、必要任务暂存
   imports/<importId>/      # 课程包验证暂存，未提交不能成为可见课程
@@ -255,7 +255,7 @@ queued -> running -> validating -> completed
   runtime/                 # 本机实例锁、服务发现和 MCP 连接信息；不进入课程导出
 ```
 
-`tutor.sqlite` 保存课程正文 JSON 和题库，不另外在工作树维护可写的课程 Markdown/JSON 副本；导出时才从已发布版本生成文件。assets 是持久数据，不能因名字像“缓存”就删除；可重新下载不代表用户导入资源总能重新取得。
+`tutor-v2.sqlite` 保存课程正文 JSON 和题库，不另外在工作树维护可写的课程 Markdown/JSON 副本；导出时才从已发布版本生成文件。旧版数据库不会迁移，首次启动需要用户确认清除。assets 是持久数据，不能因名字像“缓存”就删除；可重新下载不代表用户导入资源总能重新取得。
 
 在本机，Node 解析出的目录是 `C:\Users\wyate\.herta-ai\adaptive-tutor-platform\`（仅为当前用户示例，禁止硬编码）。其他用户使用自己的主目录。即使从不同盘符或代码检出目录启动，也应得到同一用户的数据目录；一期不提供容易造成两套数据库的自动 cwd/env 回退。
 

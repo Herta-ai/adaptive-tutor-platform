@@ -23,8 +23,13 @@
     "verify:portable": "tsx scripts/verify-portable.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.68",
+    "@ai-sdk/deepseek": "^3.0.56",
+    "@ai-sdk/google": "^4.0.85",
+    "@ai-sdk/openai": "^4.0.81",
     "@modelcontextprotocol/sdk": "1.27.1",
     "@tensorflow/tfjs": "4.22.0",
+    "ai": "^7.0.122",
     "katex": "0.16.22",
     "next": "16.2.0",
     "pyodide": "0.28.3",

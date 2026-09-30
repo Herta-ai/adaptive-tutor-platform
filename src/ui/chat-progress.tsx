@@ -10,9 +10,10 @@ const phases: Record<string, string> = {
   tool: '工具调用',
   processing: '处理中',
   result: '已收到最终结果',
+  validation: '校验生成内容',
 };
 
-export function ChatProgress({ job }: { job: any }) {
+export function JobProgress({ job }: { job: any }) {
   const active = ['queued', 'running', 'validating'].includes(job.state);
   const [clock, setClock] = useState(Date.now());
 
@@ -32,15 +33,15 @@ export function ChatProgress({ job }: { job: any }) {
 
   const title =
     job.state === 'queued'
-      ? '排队中，尚未启动 agy'
+      ? `排队中，尚未启动 ${job.runtimeKind === 'api' ? 'API harness' : 'agy'}`
       : job.state === 'validating'
         ? '正在保存回复'
         : job.state === 'running'
           ? last?.phase === 'result'
-            ? '等待 agy 退出'
+            ? `等待 ${job.runtimeKind === 'api' ? 'API harness' : 'agy'} 退出`
             : last
               ? (phases[last.phase] ?? '处理中')
-              : '正在启动 agy'
+              : `正在启动 ${job.runtimeKind === 'api' ? 'API harness' : 'agy'}`
           : job.state === 'completed'
             ? '回复完成'
             : job.state === 'cancelled'
@@ -52,7 +53,7 @@ export function ChatProgress({ job }: { job: any }) {
   return (
     <section
       className="chat-progress rounded-xl border border-border bg-card/80 p-3.5 my-3 text-xs shadow-paper backdrop-blur-sm"
-      aria-label="agy 执行进度"
+      aria-label={`${job.runtimeKind === 'api' ? 'API harness' : 'agy'} 执行进度`}
     >
       <div className="flex items-center gap-2 mb-1.5">
         {active ? (
@@ -78,7 +79,7 @@ export function ChatProgress({ job }: { job: any }) {
 
       {active && job.state !== 'queued' && (
         <p className="muted text-[11px] text-muted-foreground mt-1">
-          {last ? `距最近步骤更新 ${quiet} 秒` : '等待 agy 发出首个步骤'}
+          {last ? `距最近步骤更新 ${quiet} 秒` : `等待 ${job.runtimeKind === 'api' ? 'API harness' : 'agy'} 发出首个步骤`}
           {quiet >= 20 ? '；尚无新步骤，可继续等待或停止。' : ''}
         </p>
       )}
@@ -86,7 +87,7 @@ export function ChatProgress({ job }: { job: any }) {
       {activities.length > 0 && (
         <details open={active} className="mt-2.5 pt-2 border-t border-border/60">
           <summary className="cursor-pointer text-xs font-medium text-primary hover:underline select-none">
-            agy 执行步骤（{activities.length}
+            {job.runtimeKind === 'api' ? 'API harness' : 'agy'} 执行步骤（{activities.length}
             {activities.length >= 80 ? '，最近记录' : ''}）
           </summary>
           <ol className="mt-2 pl-4 max-h-[220px] overflow-y-auto space-y-1.5 text-[11px] text-muted-foreground border-l border-border/80 ml-1">
@@ -127,3 +128,5 @@ export function ChatProgress({ job }: { job: any }) {
     </section>
   );
 }
+
+export const ChatProgress = JobProgress;
