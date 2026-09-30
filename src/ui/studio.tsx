@@ -85,13 +85,118 @@ export function Studio() {
     [note, setNote] = useState(''),
     [assignment, setAssignment] = useState<any>(null),
     [answer, setAnswer] = useState(''),
-    [feedback, setFeedback] = useState<any>(null);
+    [feedback, setFeedback] = useState<any>(null),
+    [tutorWidth, setTutorWidth] = useState<number>(360),
+    [isDragging, setIsDragging] = useState(false);
 
   const mounted = useRef(false);
   const courseRef = useRef(courseId);
   courseRef.current = courseId;
   const nodeRef = useRef(nodeId);
   nodeRef.current = nodeId;
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const tutorRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('adaptive-tutor:sidebar-width');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        const maxW = Math.max(280, Math.min(800, window.innerWidth - 680));
+        if (!isNaN(val)) {
+          setTutorWidth(Math.min(maxW, Math.max(280, val)));
+        }
+      }
+    } catch {}
+
+    const onWindowResize = () => {
+      const maxW = Math.max(280, Math.min(800, window.innerWidth - 680));
+      setTutorWidth((w) => (w > maxW ? maxW : w));
+    };
+    window.addEventListener('resize', onWindowResize);
+    return () => window.removeEventListener('resize', onWindowResize);
+  }, []);
+
+  const handleResizePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+
+    const tutorEl = tutorRef.current;
+    const workspaceEl = workspaceRef.current;
+    if (!tutorEl || !workspaceEl) return;
+
+    const rightEdge = tutorEl.getBoundingClientRect().right;
+    let latestWidth = tutorEl.getBoundingClientRect().width;
+
+    setIsDragging(true);
+
+    const onPointerMove = (ev: PointerEvent) => {
+      const minW = 280;
+      const maxW = Math.max(minW, Math.min(800, window.innerWidth - 680));
+      const rawWidth = rightEdge - ev.clientX;
+      const clamped = Math.min(maxW, Math.max(minW, Math.round(rawWidth)));
+      latestWidth = clamped;
+      workspaceEl.style.setProperty('--tutor-width', `${clamped}px`);
+    };
+
+    const cleanup = () => {
+      setIsDragging(false);
+      document.body.style.removeProperty('cursor');
+      document.body.style.removeProperty('user-select');
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+
+    const onPointerUp = () => {
+      cleanup();
+      setTutorWidth(latestWidth);
+      try {
+        localStorage.setItem('adaptive-tutor:sidebar-width', String(latestWidth));
+      } catch {}
+    };
+
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        cleanup();
+        workspaceEl.style.setProperty('--tutor-width', `${tutorWidth}px`);
+      }
+    };
+
+    document.body.style.setProperty('cursor', 'col-resize');
+    document.body.style.setProperty('user-select', 'none');
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('keydown', onKeyDown);
+  };
+
+  const handleResizeDoubleClick = () => {
+    const defaultWidth = window.innerWidth >= 1600 ? 370 : 340;
+    setTutorWidth(defaultWidth);
+    if (workspaceRef.current) {
+      workspaceRef.current.style.setProperty('--tutor-width', `${defaultWidth}px`);
+    }
+    try {
+      localStorage.setItem('adaptive-tutor:sidebar-width', String(defaultWidth));
+    } catch {}
+  };
+
+  const handleResizeKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const minW = 280;
+      const maxW = Math.max(minW, Math.min(800, window.innerWidth - 680));
+      const delta = e.key === 'ArrowLeft' ? 20 : -20;
+      const nextWidth = Math.min(maxW, Math.max(minW, tutorWidth + delta));
+      setTutorWidth(nextWidth);
+      if (workspaceRef.current) {
+        workspaceRef.current.style.setProperty('--tutor-width', `${nextWidth}px`);
+      }
+      try {
+        localStorage.setItem('adaptive-tutor:sidebar-width', String(nextWidth));
+      } catch {}
+    }
+  };
 
   const run = async (f: () => Promise<unknown>) => {
     setError('');
@@ -563,7 +668,11 @@ export function Studio() {
           )}
         </main>
       ) : (
-        <div className="workspace">
+        <div
+          ref={workspaceRef}
+          className="workspace"
+          style={{ '--tutor-width': `${tutorWidth}px` } as React.CSSProperties}
+        >
           <aside className="outline outline-none">
             <button
               className="link flex items-center gap-1.5 text-xs text-primary hover:underline mb-2 cursor-pointer"
@@ -1000,12 +1109,26 @@ export function Studio() {
               ))}
           </main>
 
-          <aside className="tutor">
+          <aside className="tutor" ref={tutorRef}>
+            <div
+              className={`tutor-resize-handle ${isDragging ? 'is-dragging' : ''}`}
+              onPointerDown={handleResizePointerDown}
+              onDoubleClick={handleResizeDoubleClick}
+              onKeyDown={handleResizeKeyDown}
+              tabIndex={0}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="拖动调整学习导师面板宽度，双击恢复默认"
+              aria-valuenow={tutorWidth}
+              aria-valuemin={280}
+              aria-valuemax={800}
+              title="拖动调整导师面板宽度，双击恢复默认"
+            />
             <div className="tutor-title">
               <span className="avatar">知</span>
-              <div>
+              <div className="min-w-0 flex-1">
                 <h3 className="font-serif font-semibold text-foreground">学习导师</h3>
-                <small className="text-[11px] text-muted-foreground">陪你把问题想明白</small>
+                <small className="text-[11px] text-muted-foreground block truncate">陪你把问题想明白</small>
               </div>
               <button
                 className="clear-chat"

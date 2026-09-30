@@ -382,3 +382,51 @@ test('A22/A25/A26 三维截面与真实小网络训练', async ({ page }) => {
   await expect(molecule.locator('canvas')).toBeVisible({ timeout: 15000 });
   await page.screenshot({ path: 'test-results/spatial-lab.png' });
 });
+
+test('学习导师侧边栏支持拖动调整宽度、双击重置与持久化', async ({ page }) => {
+  const course = createGeometryExample(app.courses);
+  store.put('course', { ...course, title: '导师宽度调整回归' });
+  await page.goto(app.origin + '/#bootstrap=' + app.mintBootstrap());
+  await page
+    .getByRole('button')
+    .filter({ has: page.getByRole('heading', { name: '导师宽度调整回归' }) })
+    .click();
+  await expect(page.getByRole('heading', { name: '直角三角形的面积', exact: true })).toBeVisible();
+
+  const tutor = page.locator('.tutor');
+  const handle = page.locator('.tutor-resize-handle');
+  await expect(handle).toBeVisible();
+
+  const getWidth = async () =>
+    await page.evaluate(() => document.querySelector('.tutor')!.getBoundingClientRect().width);
+
+  const initialWidth = await getWidth();
+
+  // 模拟鼠标拖拽：往左拖 100px 扩大侧边栏
+  const handleBox = (await handle.boundingBox())!;
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(handleBox.x + handleBox.width / 2 - 100, handleBox.y + 100);
+  await page.mouse.up();
+
+  const expandedWidth = await getWidth();
+  expect(expandedWidth).toBeGreaterThan(initialWidth + 80);
+
+  // 验证 localStorage 持久化
+  const savedWidth = await page.evaluate(() =>
+    localStorage.getItem('adaptive-tutor:sidebar-width'),
+  );
+  expect(savedWidth).toBe(String(Math.round(expandedWidth)));
+
+  // 双击手柄恢复默认宽度
+  await handle.dblclick();
+  const resetWidth = await getWidth();
+  expect(resetWidth).toBeLessThan(expandedWidth - 50);
+
+  // 键盘方向键调整
+  await handle.focus();
+  await page.keyboard.press('ArrowLeft');
+  const keyboardAdjustedWidth = await getWidth();
+  expect(keyboardAdjustedWidth).toBe(resetWidth + 20);
+});
+
