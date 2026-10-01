@@ -479,18 +479,21 @@ export function Studio() {
           <p className="text-sm text-muted-foreground leading-relaxed my-5">检测到旧版本数据库。确认后将清除旧课程、对话、进度和任务，无法恢复。</p>
           <Button disabled={busy} onClick={() => void run(async () => { await command('/data/reset', { confirm: true }); const info = await api('/runtime'); setRuntime(info); await refreshList(); })}>确认清除并开始使用</Button>
         </main>
-      ) : !agentConfig?.configured ? (
+      ) : !agentConfig?.configured && !agentConfig?.apiSetupSkipped ? (
         <main className="page max-w-xl mx-auto">
           <span className="eyebrow">第一次使用</span>
           <h1 className="font-serif">配置你的 AI 导师</h1>
-          <p className="text-sm text-muted-foreground leading-relaxed my-5">请先配置一个模型供应商。设置会保存在这台电脑上，之后启动不再重复填写。</p>
-          <form className="panel rounded-2xl border border-border bg-card p-6 space-y-4" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); void run(async () => { await command('/runtime/config', { provider: f.get('provider'), providerConfig: { provider: f.get('provider'), model: f.get('model'), apiKey: f.get('apiKey'), baseUrl: String(f.get('baseUrl') ?? '').trim() || undefined }, showModelOutput: f.get('showModelOutput') === 'on' }, 'PUT'); setAgentConfig(await api('/runtime/config')); setRuntime(await api('/runtime')); await refreshList(); }); }}>
+          <p className="text-sm text-muted-foreground leading-relaxed my-5">先配置一个模型供应商，用于对话。课程内容首次生成默认通过本机已登录的 agy-cli 完成。设置会保存在这台电脑上，之后启动不再重复填写。</p>
+          <form className="panel rounded-2xl border border-border bg-card p-6 space-y-4" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); void run(async () => { await command('/runtime/config', { chatRuntime: 'api', generationRuntime: 'antigravity', provider: f.get('provider'), providerConfig: { provider: f.get('provider'), model: f.get('model'), apiKey: f.get('apiKey'), baseUrl: String(f.get('baseUrl') ?? '').trim() || undefined }, showModelOutput: f.get('showModelOutput') === 'on' }, 'PUT'); setAgentConfig(await api('/runtime/config')); setRuntime(await api('/runtime')); await refreshList(); }); }}>
             <label className="block text-xs">供应商<select name="provider" className="mt-1 w-full rounded-lg border border-input bg-background p-2"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="google">Google</option><option value="deepseek">DeepSeek</option></select></label>
             <label className="block text-xs">模型<Input name="model" required placeholder="例如 gpt-4.1-mini" className="mt-1" /></label>
             <label className="block text-xs">API key<Input name="apiKey" type="password" required className="mt-1" /></label>
             <label className="block text-xs">自定义 Base URL（可选）<Input name="baseUrl" placeholder="https://api.example.com/v1" className="mt-1" /></label>
             <label className="flex items-center gap-2 text-xs"><input name="showModelOutput" type="checkbox" defaultChecked />显示模型回答正文和生成预览</label>
-            <Button type="submit" disabled={busy}>保存并进入</Button>
+            <div className="flex items-center gap-3">
+              <Button type="submit" disabled={busy}>保存并进入</Button>
+              <Button type="button" variant="outline" disabled={busy} onClick={() => void run(async () => { await command('/runtime/config', { apiSetupSkipped: true, generationRuntime: 'antigravity' }, 'PUT'); setAgentConfig(await api('/runtime/config')); setRuntime(await api('/runtime')); await refreshList(); })}>跳过 API 配置，直接使用 agy-cli</Button>
+            </div>
           </form>
         </main>
       ) : tab === 'settings' ? (
@@ -502,7 +505,7 @@ export function Studio() {
             <p className="text-xs text-muted-foreground mb-4">当前供应商：{agentConfig?.provider ?? '未配置'}。</p>
             <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); void run(async () => { await command('/runtime/config', { chatRuntime: f.get('chatRuntime'), generationRuntime: f.get('generationRuntime'), provider: f.get('provider'), providerConfig: { provider: f.get('provider'), model: f.get('model'), apiKey: f.get('apiKey') || undefined, baseUrl: String(f.get('baseUrl') ?? '').trim() || undefined }, showModelOutput: f.get('showModelOutput') === 'on' }, 'PUT'); setRuntime(await api('/runtime')); setAgentConfig(await api('/runtime/config')); }); }}>
               <label className="block text-xs">对话运行时<select name="chatRuntime" defaultValue={agentConfig?.chatRuntime ?? 'api'} className="mt-1 w-full rounded-lg border border-input bg-background p-2"><option value="api">API harness</option><option value="antigravity">agy 兼容运行时</option></select></label>
-              <label className="block text-xs">课程生成运行时<select name="generationRuntime" defaultValue={agentConfig?.generationRuntime ?? 'api'} className="mt-1 w-full rounded-lg border border-input bg-background p-2"><option value="api">API harness</option><option value="antigravity">agy 兼容运行时</option></select></label>
+              <label className="block text-xs">课程生成运行时<select name="generationRuntime" defaultValue={agentConfig?.generationRuntime ?? 'antigravity'} className="mt-1 w-full rounded-lg border border-input bg-background p-2"><option value="antigravity">agy-cli（推荐）</option><option value="api">API harness</option></select></label>
               <label className="block text-xs">供应商<select name="provider" defaultValue={agentConfig?.provider ?? 'openai'} className="mt-1 w-full rounded-lg border border-input bg-background p-2"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="google">Google</option><option value="deepseek">DeepSeek</option></select></label>
               <label className="block text-xs">模型<Input name="model" defaultValue={agentConfig?.providers?.[agentConfig?.provider]?.model ?? ''} required className="mt-1" /></label>
               <label className="block text-xs">API key（留空保持原 key）<Input name="apiKey" type="password" className="mt-1" /></label>

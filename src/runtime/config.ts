@@ -17,17 +17,22 @@ export interface AgentConfig {
   provider: ProviderId;
   providers: Partial<Record<ProviderId, ProviderConfig>>;
   showModelOutput: boolean;
+  apiSetupSkipped: boolean;
 }
 const defaults: AgentConfig = {
   chatRuntime: 'api',
-  generationRuntime: 'api',
+  // Course content is generated through the locally authenticated agy CLI by
+  // default. API credentials configured during onboarding remain available for
+  // chat and can still be selected explicitly in settings when needed.
+  generationRuntime: 'antigravity',
   provider: 'openai',
   providers: {},
   showModelOutput: true,
+  apiSetupSkipped: false,
 };
 const schema = z.object({
   chatRuntime: z.enum(['api', 'antigravity']), generationRuntime: z.enum(['api', 'antigravity']),
-  provider: z.enum(providers), showModelOutput: z.boolean(),
+  provider: z.enum(providers), showModelOutput: z.boolean(), apiSetupSkipped: z.boolean().default(false),
   providers: z.partialRecord(z.enum(providers), z.object({ model: z.string().trim().min(1).max(200), apiKey: z.string().trim().min(1).max(1000), baseUrl: z.url().optional() })),
 });
 export function configPath(root: string) {

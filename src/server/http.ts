@@ -203,12 +203,13 @@ export function createApplication(
           generationRuntime: jobs.config.generationRuntime,
           provider: jobs.config.provider,
           showModelOutput: jobs.config.showModelOutput,
+          apiSetupSkipped: jobs.config.apiSetupSkipped,
           providers: Object.fromEntries(providers.map((name) => [name, {
             configured: !!jobs.config.providers[name],
             model: jobs.config.providers[name]?.model ?? null,
           }])),
           configured: configured(jobs.config),
-          setupRequired: !configured(jobs.config),
+          setupRequired: !configured(jobs.config) && !jobs.config.apiSetupSkipped,
         });
         return;
       }
@@ -219,6 +220,7 @@ export function createApplication(
           generationRuntime: z.enum(['api', 'antigravity']).optional(),
           provider: z.enum(providers).optional(),
           showModelOutput: z.boolean().optional(),
+          apiSetupSkipped: z.boolean().optional(),
           providerConfig: z.strictObject({
             provider: z.enum(providers), model: z.string().min(1).max(200), apiKey: z.string().min(1).max(1000).optional(), baseUrl: z.string().url().optional(),
           }).optional(),
@@ -228,10 +230,11 @@ export function createApplication(
           generationRuntime: p.generationRuntime,
           provider: p.provider,
           showModelOutput: p.showModelOutput,
+          apiSetupSkipped: p.providerConfig ? false : p.apiSetupSkipped,
           providers: p.providerConfig ? { [p.providerConfig.provider]: { model: p.providerConfig.model, apiKey: p.providerConfig.apiKey ?? jobs.config.providers[p.providerConfig.provider]?.apiKey ?? '', baseUrl: p.providerConfig.baseUrl } } : undefined,
         });
         jobs.updateConfig(next);
-        json(res, 200, { configured: configured(next), provider: next.provider, showModelOutput: next.showModelOutput });
+        json(res, 200, { configured: configured(next), apiSetupSkipped: next.apiSetupSkipped, provider: next.provider, showModelOutput: next.showModelOutput });
         return;
       }
       if (route === '/data/reset/status' && method === 'GET') {
