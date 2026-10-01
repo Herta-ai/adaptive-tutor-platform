@@ -77,6 +77,7 @@ export function Studio() {
     [lesson, setLesson] = useState<any>(null),
     [sessionId, setSessionId] = useState(''),
     [runtime, setRuntime] = useState<any>(null),
+    [agentConfig, setAgentConfig] = useState<any>(null),
     [tab, setTab] = useState<'courses' | 'gallery' | 'settings'>('courses'),
     [creating, setCreating] = useState(false),
     [busy, setBusy] = useState(false),
@@ -85,13 +86,118 @@ export function Studio() {
     [note, setNote] = useState(''),
     [assignment, setAssignment] = useState<any>(null),
     [answer, setAnswer] = useState(''),
-    [feedback, setFeedback] = useState<any>(null);
+    [feedback, setFeedback] = useState<any>(null),
+    [tutorWidth, setTutorWidth] = useState<number>(360),
+    [isDragging, setIsDragging] = useState(false);
 
   const mounted = useRef(false);
   const courseRef = useRef(courseId);
   courseRef.current = courseId;
   const nodeRef = useRef(nodeId);
   nodeRef.current = nodeId;
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const tutorRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('adaptive-tutor:sidebar-width');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        const maxW = Math.max(280, Math.min(800, window.innerWidth - 680));
+        if (!isNaN(val)) {
+          setTutorWidth(Math.min(maxW, Math.max(280, val)));
+        }
+      }
+    } catch {}
+
+    const onWindowResize = () => {
+      const maxW = Math.max(280, Math.min(800, window.innerWidth - 680));
+      setTutorWidth((w) => (w > maxW ? maxW : w));
+    };
+    window.addEventListener('resize', onWindowResize);
+    return () => window.removeEventListener('resize', onWindowResize);
+  }, []);
+
+  const handleResizePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+
+    const tutorEl = tutorRef.current;
+    const workspaceEl = workspaceRef.current;
+    if (!tutorEl || !workspaceEl) return;
+
+    const rightEdge = tutorEl.getBoundingClientRect().right;
+    let latestWidth = tutorEl.getBoundingClientRect().width;
+
+    setIsDragging(true);
+
+    const onPointerMove = (ev: PointerEvent) => {
+      const minW = 280;
+      const maxW = Math.max(minW, Math.min(800, window.innerWidth - 680));
+      const rawWidth = rightEdge - ev.clientX;
+      const clamped = Math.min(maxW, Math.max(minW, Math.round(rawWidth)));
+      latestWidth = clamped;
+      workspaceEl.style.setProperty('--tutor-width', `${clamped}px`);
+    };
+
+    const cleanup = () => {
+      setIsDragging(false);
+      document.body.style.removeProperty('cursor');
+      document.body.style.removeProperty('user-select');
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+
+    const onPointerUp = () => {
+      cleanup();
+      setTutorWidth(latestWidth);
+      try {
+        localStorage.setItem('adaptive-tutor:sidebar-width', String(latestWidth));
+      } catch {}
+    };
+
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        cleanup();
+        workspaceEl.style.setProperty('--tutor-width', `${tutorWidth}px`);
+      }
+    };
+
+    document.body.style.setProperty('cursor', 'col-resize');
+    document.body.style.setProperty('user-select', 'none');
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('keydown', onKeyDown);
+  };
+
+  const handleResizeDoubleClick = () => {
+    const defaultWidth = window.innerWidth >= 1600 ? 370 : 340;
+    setTutorWidth(defaultWidth);
+    if (workspaceRef.current) {
+      workspaceRef.current.style.setProperty('--tutor-width', `${defaultWidth}px`);
+    }
+    try {
+      localStorage.setItem('adaptive-tutor:sidebar-width', String(defaultWidth));
+    } catch {}
+  };
+
+  const handleResizeKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const minW = 280;
+      const maxW = Math.max(minW, Math.min(800, window.innerWidth - 680));
+      const delta = e.key === 'ArrowLeft' ? 20 : -20;
+      const nextWidth = Math.min(maxW, Math.max(minW, tutorWidth + delta));
+      setTutorWidth(nextWidth);
+      if (workspaceRef.current) {
+        workspaceRef.current.style.setProperty('--tutor-width', `${nextWidth}px`);
+      }
+      try {
+        localStorage.setItem('adaptive-tutor:sidebar-width', String(nextWidth));
+      } catch {}
+    }
+  };
 
   const run = async (f: () => Promise<unknown>) => {
     setError('');
@@ -145,8 +251,10 @@ export function Studio() {
     mounted.current = true;
     void run(async () => {
       await connect();
-      await refreshList();
-      setRuntime(await api('/runtime'));
+      const info = await api('/runtime');
+      setRuntime(info);
+      setAgentConfig(await api('/runtime/config'));
+      if (!info.dataResetRequired) await refreshList();
       setReady(true);
     });
   }, []);
@@ -234,6 +342,11 @@ export function Studio() {
       payload,
     });
     await refresh();
+  }
+
+  function promptForGeneration(label: string, initial = '') {
+    const value = window.prompt(label, initial);
+    return value === null ? undefined : value.trim();
   }
 
   async function nextExercise() {
@@ -356,13 +469,51 @@ export function Studio() {
           <span className="eyebrow">LOCAL LEARNING STUDIO</span>
           <h1 className="text-3xl font-serif text-foreground font-normal mb-3">让理解，循序发生。</h1>
           <p className="text-sm text-muted-foreground max-w-md">
-            {error ? '请通过终端启动器打印的引导链接重新连接。' : '正在连接你的本地学习空间…'}
-          </p>
+      {error ? '请通过终端启动器打印的引导链接重新连接。' : '正在连接你的本地学习空间…'}
+        </p>
+      </main>
+      ) : runtime?.dataResetRequired ? (
+        <main className="page max-w-xl mx-auto">
+          <span className="eyebrow">数据版本更新</span>
+          <h1 className="font-serif">需要清除旧版本数据</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed my-5">检测到旧版本数据库。确认后将清除旧课程、对话、进度和任务，无法恢复。</p>
+          <Button disabled={busy} onClick={() => void run(async () => { await command('/data/reset', { confirm: true }); const info = await api('/runtime'); setRuntime(info); await refreshList(); })}>确认清除并开始使用</Button>
+        </main>
+      ) : !agentConfig?.configured && !agentConfig?.apiSetupSkipped ? (
+        <main className="page max-w-xl mx-auto">
+          <span className="eyebrow">第一次使用</span>
+          <h1 className="font-serif">配置你的 AI 导师</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed my-5">先配置一个模型供应商，用于对话。课程内容首次生成默认通过本机已登录的 agy-cli 完成。设置会保存在这台电脑上，之后启动不再重复填写。</p>
+          <form className="panel rounded-2xl border border-border bg-card p-6 space-y-4" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); void run(async () => { await command('/runtime/config', { chatRuntime: 'api', generationRuntime: 'antigravity', provider: f.get('provider'), providerConfig: { provider: f.get('provider'), model: f.get('model'), apiKey: f.get('apiKey'), baseUrl: String(f.get('baseUrl') ?? '').trim() || undefined }, showModelOutput: f.get('showModelOutput') === 'on' }, 'PUT'); setAgentConfig(await api('/runtime/config')); setRuntime(await api('/runtime')); await refreshList(); }); }}>
+            <label className="block text-xs">供应商<select name="provider" className="mt-1 w-full rounded-lg border border-input bg-background p-2"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="google">Google</option><option value="deepseek">DeepSeek</option></select></label>
+            <label className="block text-xs">模型<Input name="model" required placeholder="例如 gpt-4.1-mini" className="mt-1" /></label>
+            <label className="block text-xs">API key<Input name="apiKey" type="password" required className="mt-1" /></label>
+            <label className="block text-xs">自定义 Base URL（可选）<Input name="baseUrl" placeholder="https://api.example.com/v1" className="mt-1" /></label>
+            <label className="flex items-center gap-2 text-xs"><input name="showModelOutput" type="checkbox" defaultChecked />显示模型回答正文和生成预览</label>
+            <div className="flex items-center gap-3">
+              <Button type="submit" disabled={busy}>保存并进入</Button>
+              <Button type="button" variant="outline" disabled={busy} onClick={() => void run(async () => { await command('/runtime/config', { apiSetupSkipped: true, generationRuntime: 'antigravity' }, 'PUT'); setAgentConfig(await api('/runtime/config')); setRuntime(await api('/runtime')); await refreshList(); })}>跳过 API 配置，直接使用 agy-cli</Button>
+            </div>
+          </form>
         </main>
       ) : tab === 'settings' ? (
         <main className="page">
           <span className="eyebrow">你的运行环境</span>
-          <h1 className="font-serif">连接自己的 AI 导师</h1>
+            <h1 className="font-serif">连接自己的 AI 导师</h1>
+          <section className="panel rounded-2xl border border-border bg-card p-6 my-6 shadow-paper">
+            <h2 className="text-lg font-serif mb-2">API Harness</h2>
+            <p className="text-xs text-muted-foreground mb-4">当前供应商：{agentConfig?.provider ?? '未配置'}。</p>
+            <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); void run(async () => { await command('/runtime/config', { chatRuntime: f.get('chatRuntime'), generationRuntime: f.get('generationRuntime'), provider: f.get('provider'), providerConfig: { provider: f.get('provider'), model: f.get('model'), apiKey: f.get('apiKey') || undefined, baseUrl: String(f.get('baseUrl') ?? '').trim() || undefined }, showModelOutput: f.get('showModelOutput') === 'on' }, 'PUT'); setRuntime(await api('/runtime')); setAgentConfig(await api('/runtime/config')); }); }}>
+              <label className="block text-xs">对话运行时<select name="chatRuntime" defaultValue={agentConfig?.chatRuntime ?? 'api'} className="mt-1 w-full rounded-lg border border-input bg-background p-2"><option value="api">API harness</option><option value="antigravity">agy 兼容运行时</option></select></label>
+              <label className="block text-xs">课程生成运行时<select name="generationRuntime" defaultValue={agentConfig?.generationRuntime ?? 'antigravity'} className="mt-1 w-full rounded-lg border border-input bg-background p-2"><option value="antigravity">agy-cli（推荐）</option><option value="api">API harness</option></select></label>
+              <label className="block text-xs">供应商<select name="provider" defaultValue={agentConfig?.provider ?? 'openai'} className="mt-1 w-full rounded-lg border border-input bg-background p-2"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="google">Google</option><option value="deepseek">DeepSeek</option></select></label>
+              <label className="block text-xs">模型<Input name="model" defaultValue={agentConfig?.providers?.[agentConfig?.provider]?.model ?? ''} required className="mt-1" /></label>
+              <label className="block text-xs">API key（留空保持原 key）<Input name="apiKey" type="password" className="mt-1" /></label>
+              <label className="block text-xs">Base URL（可选）<Input name="baseUrl" className="mt-1" /></label>
+              <label className="flex items-center gap-2 text-xs"><input name="showModelOutput" type="checkbox" defaultChecked={runtime?.showModelOutput !== false} />显示模型回答正文和生成预览</label>
+              <Button size="sm" type="submit" disabled={busy}>保存显示设置</Button>
+            </form>
+          </section>
           <section className="panel rounded-2xl border border-border bg-card p-6 my-6 shadow-paper">
             <h2 className="text-lg font-serif mb-2">Antigravity CLI</h2>
             <div className="flex items-center gap-3 my-2 text-xs">
@@ -563,7 +714,11 @@ export function Studio() {
           )}
         </main>
       ) : (
-        <div className="workspace">
+        <div
+          ref={workspaceRef}
+          className="workspace"
+          style={{ '--tutor-width': `${tutorWidth}px` } as React.CSSProperties}
+        >
           <aside className="outline outline-none">
             <button
               className="link flex items-center gap-1.5 text-xs text-primary hover:underline mb-2 cursor-pointer"
@@ -598,6 +753,7 @@ export function Studio() {
               })}
             </div>
             <div className="outline-footer mt-auto pt-3 border-t border-border shrink-0">
+              {snapshot && snapshot.nodes.length > 0 && <button className="link text-xs text-destructive hover:underline mb-2" onClick={() => void run(async () => { if (!window.confirm('重新生成大纲将清除全部章节、对话、进度、作答、诊断、补丁和笔记。继续吗？')) return; const extraPrompt = promptForGeneration('大纲补充要求', snapshot.course.lastOutlinePrompt ?? ''); if (extraPrompt === undefined) return; await createJob('plan_course', { regenerate: true, confirm: true, extraPrompt }); })}>重新生成大纲</button>}
               <TransferControls courseId={courseId} onError={setError} />
               <p className="text-[11px] text-muted-foreground my-2">独立作答，才是理解的证据。</p>
               <button
@@ -627,9 +783,10 @@ export function Studio() {
                 <span className="eyebrow">第一步 · 确认学习路径</span>
                 <h1 className="font-serif">{snapshot.course.title}</h1>
                 <p className="text-xs text-muted-foreground leading-relaxed my-4">{snapshot.course.goal}</p>
+                {activeJobs.filter((j: any) => j.kind !== 'chat').map((j: any) => <ChatProgress key={j.id} job={runtime?.showModelOutput !== false ? j : { ...j, preview: undefined }} onCancel={() => void run(() => command(`/jobs/${j.id}/cancel`))} />)}
                 <Button
                   disabled={busy || activeJobs.length > 0}
-                  onClick={() => void run(() => createJob('plan_course'))}
+                  onClick={() => void run(() => createJob('plan_course', { extraPrompt: snapshot.course.lastOutlinePrompt ?? promptForGeneration('可选：补充大纲生成要求') }))}
                 >
                   生成大纲
                 </Button>
@@ -645,11 +802,13 @@ export function Studio() {
                       <span>/ {node.estimatedMinutes} 分钟</span>
                     </span>
                     <span>章节 {snapshot.nodes.indexOf(node) + 1}</span>
+                    {lesson?.blocks && <button className="link text-xs text-primary hover:underline" onClick={() => void run(async () => { if (!window.confirm('重新生成将清除本章节正文、题目、对话、作答、诊断、进度和笔记。继续吗？')) return; const extraPrompt = promptForGeneration('章节补充要求', node.lastLessonPrompt ?? ''); if (extraPrompt === undefined) return; await createJob('generate_lesson', { nodeId, regenerate: true, confirm: true, extraPrompt }); })}>重新生成章节</button>}
                   </div>
                   <h1 className="font-serif text-2xl font-semibold mb-2">{node.title}</h1>
                   <p className="lead text-xs text-muted-foreground leading-relaxed">
                     {node.objectives.map((o: any) => o.description).join(' · ')}
                   </p>
+                  {activeJobs.filter((j: any) => j.kind !== 'chat').map((j: any) => <ChatProgress key={j.id} job={runtime?.showModelOutput !== false ? j : { ...j, preview: undefined }} onCancel={() => void run(() => command(`/jobs/${j.id}/cancel`))} />)}
 
                   {lesson?.blocks ? (
                     lesson.blocks.map((b: any) => (
@@ -707,7 +866,7 @@ export function Studio() {
                       <p className="text-xs text-muted-foreground mb-3">这一节还没有生成内容。</p>
                       <Button
                         disabled={busy || activeJobs.length > 0}
-                        onClick={() => void run(() => createJob('generate_lesson', { nodeId }))}
+                        onClick={() => void run(() => createJob('generate_lesson', { nodeId, extraPrompt: promptForGeneration('可选：章节补充要求', node.lastLessonPrompt ?? '') }))}
                       >
                         生成这一节
                       </Button>
@@ -983,29 +1142,35 @@ export function Studio() {
             ))}
 
             {snapshot?.jobs
-              .filter((j: any) => j.kind !== 'chat')
+              .filter((j: any) => j.kind !== 'chat' && !['queued', 'running', 'validating'].includes(j.state))
               .slice(-3)
               .map((j: any) => (
-                <div className="job" key={j.id}>
-                  <span>
-                    {states[j.state]}：{j.kind}
-                    {j.error && <span> · {j.error.message}</span>}
-                  </span>
-                  {['queued', 'running', 'validating'].includes(j.state) && (
-                    <Button variant="outline" size="sm" className="h-7 text-xs ml-3" onClick={() => void run(() => command(`/jobs/${j.id}/cancel`))}>
-                      取消
-                    </Button>
-                  )}
+                <div key={j.id}>
+                  <ChatProgress job={runtime?.showModelOutput !== false ? j : { ...j, preview: undefined }} />
                 </div>
               ))}
           </main>
 
-          <aside className="tutor">
+          <aside className="tutor" ref={tutorRef}>
+            <div
+              className={`tutor-resize-handle ${isDragging ? 'is-dragging' : ''}`}
+              onPointerDown={handleResizePointerDown}
+              onDoubleClick={handleResizeDoubleClick}
+              onKeyDown={handleResizeKeyDown}
+              tabIndex={0}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="拖动调整学习导师面板宽度，双击恢复默认"
+              aria-valuenow={tutorWidth}
+              aria-valuemin={280}
+              aria-valuemax={800}
+              title="拖动调整导师面板宽度，双击恢复默认"
+            />
             <div className="tutor-title">
               <span className="avatar">知</span>
-              <div>
+              <div className="min-w-0 flex-1">
                 <h3 className="font-serif font-semibold text-foreground">学习导师</h3>
-                <small className="text-[11px] text-muted-foreground">陪你把问题想明白</small>
+                <small className="text-[11px] text-muted-foreground block truncate">陪你把问题想明白</small>
               </div>
               <button
                 className="clear-chat"
@@ -1049,7 +1214,7 @@ export function Studio() {
                         {status !== 'complete' ? ' · ' + (states[status] ?? '回复中') : ''}
                       </small>
                       {m.role === 'assistant' && job && <ChatProgress job={job} />}
-                      {m.text && <Markdown text={m.text} />}
+                      {m.text && (m.role !== 'assistant' || runtime?.showModelOutput !== false) && <Markdown text={m.text} />}
                       {(!m.text || stopped) && (
                         <p role={stopped ? 'status' : undefined} className="text-xs text-muted-foreground italic mt-1">
                           {notice}
@@ -1163,6 +1328,7 @@ export function Studio() {
                       weeklyMinutes: Number(data.get('minutes')),
                       language: '中文',
                     },
+                    outlinePrompt: data.get('outlinePrompt') || undefined,
                   });
                   setCreating(false);
                   await refreshList();
@@ -1187,6 +1353,10 @@ export function Studio() {
               <label className="block text-xs font-medium text-foreground">
                 已有基础
                 <Input name="background" defaultValue="" maxLength={4000} className="mt-1.5" />
+              </label>
+              <label className="block text-xs font-medium text-foreground">
+                大纲生成补充要求（可选）
+                <Textarea name="outlinePrompt" maxLength={4000} placeholder="例如：偏重实践案例，分成 6 个章节" className="mt-1.5" />
               </label>
               <label className="block text-xs font-medium text-foreground">
                 每周可投入分钟数

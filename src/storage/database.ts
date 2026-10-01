@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { acquireWriterLock } from './writer-lock.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -7,6 +7,23 @@ import { randomUUID, createHash } from 'node:crypto';
 import { AppError } from '../domain/errors.js';
 
 export const dataRoot = () => join(homedir(), '.herta-ai', 'adaptive-tutor-platform');
+export const databasePath = (root: string) => join(root, 'tutor-v2.sqlite');
+export function legacyDatabaseFiles(root: string): string[] {
+  if (!existsSync(root)) return [];
+  return readdirSync(root)
+    .filter((name) => /\.sqlite(?:-(?:wal|shm))?$/i.test(name) && !/^tutor-v2\.sqlite(?:-(?:wal|shm))?$/i.test(name))
+    .map((name) => join(root, name));
+}
+export function clearLegacyDatabases(root: string) {
+  for (const path of legacyDatabaseFiles(root)) {
+    try {
+      unlinkSync(path);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT') throw error;
+    }
+  }
+}
 export const uuid = () => randomUUID();
 export const now = () => new Date().toISOString();
 export function canonical(value: unknown): string {
@@ -47,7 +64,7 @@ export class Store {
       mkdirSync(join(root, dir), { recursive: true });
     if (ownsLock) this.releaseLock = acquireWriterLock(root);
     try {
-      this.db = new DatabaseSync(join(root, 'tutor.sqlite'));
+      this.db = new DatabaseSync(databasePath(root));
       this.db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
       const version = (this.db.prepare('PRAGMA user_version').get() as { user_version: number })
         .user_version;

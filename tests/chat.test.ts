@@ -6,6 +6,7 @@ import { Store, uuid } from '../src/storage/database.js';
 import { Courses } from '../src/domain/courses.js';
 import { createGeometryExample } from '../src/domain/examples.js';
 import { AppError } from '../src/domain/errors.js';
+import { saveAgentConfig } from '../src/runtime/config.js';
 const run = vi.hoisted(() => vi.fn());
 vi.mock('../src/runtime/antigravity.js', () => ({
   detectRuntime: () => ({ executable: 'synthetic-cli', version: '1.2.11', state: 'ready' }),
@@ -17,6 +18,12 @@ beforeEach(() => {
   run.mockReset();
   root = mkdtempSync(join(tmpdir(), 'tutor-chat-test-'));
   store = new Store(root);
+  saveAgentConfig(root, {
+    chatRuntime: 'antigravity',
+    generationRuntime: 'antigravity',
+    provider: 'openai',
+    providers: { openai: { model: 'synthetic', apiKey: 'test-key' } },
+  });
   courses = new Courses(store);
   const course = createGeometryExample(courses);
   node = store.list('node', course.id)[0];

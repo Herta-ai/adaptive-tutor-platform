@@ -199,6 +199,7 @@ export const createCourse = z.strictObject({
     language: z.string().min(1).max(40),
     targetDate: z.iso.date().optional(),
   }),
+  outlinePrompt: z.string().max(4000).optional(),
 });
 export const componentState = z.strictObject({
   templateId: id,
