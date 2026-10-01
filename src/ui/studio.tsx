@@ -783,7 +783,7 @@ export function Studio() {
                 <span className="eyebrow">第一步 · 确认学习路径</span>
                 <h1 className="font-serif">{snapshot.course.title}</h1>
                 <p className="text-xs text-muted-foreground leading-relaxed my-4">{snapshot.course.goal}</p>
-                {activeJobs.filter((j: any) => j.kind !== 'chat').map((j: any) => <div key={j.id}><ChatProgress job={j} />{runtime?.showModelOutput !== false && j.preview && <pre className="max-h-48 overflow-auto rounded-lg bg-secondary p-3 text-xs whitespace-pre-wrap">{j.preview}</pre>}</div>)}
+                {activeJobs.filter((j: any) => j.kind !== 'chat').map((j: any) => <ChatProgress key={j.id} job={runtime?.showModelOutput !== false ? j : { ...j, preview: undefined }} onCancel={() => void run(() => command(`/jobs/${j.id}/cancel`))} />)}
                 <Button
                   disabled={busy || activeJobs.length > 0}
                   onClick={() => void run(() => createJob('plan_course', { extraPrompt: snapshot.course.lastOutlinePrompt ?? promptForGeneration('可选：补充大纲生成要求') }))}
@@ -808,7 +808,7 @@ export function Studio() {
                   <p className="lead text-xs text-muted-foreground leading-relaxed">
                     {node.objectives.map((o: any) => o.description).join(' · ')}
                   </p>
-                  {activeJobs.filter((j: any) => j.kind !== 'chat').map((j: any) => <div key={j.id}><ChatProgress job={j} />{runtime?.showModelOutput !== false && j.preview && <pre className="max-h-48 overflow-auto rounded-lg bg-secondary p-3 text-xs whitespace-pre-wrap">{j.preview}</pre>}</div>)}
+                  {activeJobs.filter((j: any) => j.kind !== 'chat').map((j: any) => <ChatProgress key={j.id} job={runtime?.showModelOutput !== false ? j : { ...j, preview: undefined }} onCancel={() => void run(() => command(`/jobs/${j.id}/cancel`))} />)}
 
                   {lesson?.blocks ? (
                     lesson.blocks.map((b: any) => (
@@ -1142,20 +1142,11 @@ export function Studio() {
             ))}
 
             {snapshot?.jobs
-              .filter((j: any) => j.kind !== 'chat')
+              .filter((j: any) => j.kind !== 'chat' && !['queued', 'running', 'validating'].includes(j.state))
               .slice(-3)
               .map((j: any) => (
-                <div className="job" key={j.id}>
-                  <span>
-                    {states[j.state]}：{j.kind}
-                    {j.error && <span> · {j.error.message}</span>}
-                  </span>
-                  {runtime?.showModelOutput !== false && j.preview && <div className="mt-2 text-xs text-muted-foreground max-h-40 overflow-auto"><Markdown text={j.preview} /></div>}
-                  {['queued', 'running', 'validating'].includes(j.state) && (
-                    <Button variant="outline" size="sm" className="h-7 text-xs ml-3" onClick={() => void run(() => command(`/jobs/${j.id}/cancel`))}>
-                      取消
-                    </Button>
-                  )}
+                <div key={j.id}>
+                  <ChatProgress job={runtime?.showModelOutput !== false ? j : { ...j, preview: undefined }} />
                 </div>
               ))}
           </main>

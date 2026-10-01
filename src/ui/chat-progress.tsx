@@ -13,7 +13,7 @@ const phases: Record<string, string> = {
   validation: '校验生成内容',
 };
 
-export function JobProgress({ job }: { job: any }) {
+export function JobProgress({ job, onCancel }: { job: any; onCancel?: () => void }) {
   const active = ['queued', 'running', 'validating'].includes(job.state);
   const [clock, setClock] = useState(Date.now());
 
@@ -43,7 +43,9 @@ export function JobProgress({ job }: { job: any }) {
               ? (phases[last.phase] ?? '处理中')
               : `正在启动 ${job.runtimeKind === 'api' ? 'API harness' : 'agy'}`
           : job.state === 'completed'
-            ? '回复完成'
+            ? job.kind === 'chat'
+              ? '回复完成'
+              : `已完成：${job.kind}`
             : job.state === 'cancelled'
               ? '已停止'
               : job.state === 'interrupted'
@@ -65,6 +67,11 @@ export function JobProgress({ job }: { job: any }) {
           <Activity className="h-3.5 w-3.5 text-muted-foreground" />
         )}
         <strong className="font-semibold text-foreground tracking-tight">{title}</strong>
+        {onCancel && active && (
+          <button type="button" className="ml-auto rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={onCancel}>
+            停止
+          </button>
+        )}
       </div>
 
       {job.startedAt && (
@@ -124,6 +131,24 @@ export function JobProgress({ job }: { job: any }) {
             ))}
           </ol>
         </details>
+      )}
+
+      {job.preview && (
+        <div className="mt-3 border-t border-border/60 pt-3">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            生成预览
+          </div>
+          <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border/60 bg-secondary/70 p-3 text-[11px] leading-relaxed text-muted-foreground">
+            {job.preview}
+          </pre>
+        </div>
+      )}
+
+      {job.error?.message && (
+        <p className="mt-2 rounded-lg bg-destructive/10 px-2.5 py-2 text-[11px] text-destructive">
+          {job.error.message}
+        </p>
       )}
     </section>
   );
