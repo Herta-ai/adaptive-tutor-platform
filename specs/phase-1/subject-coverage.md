@@ -1,6 +1,6 @@
 # 学科覆盖追踪
 
-注册模板不等于完整学科验收。通过实际发布内置课程统计：2 条三节点路径、6 个课程绑定演示；人工复核待完成。全部主题及八条路径仍未齐备。
+注册模板不等于完整学科验收。通过实际发布内置课程统计：7 条至少三节点路径、24 个课程绑定演示；人工复核待完成。原有科学路径要求（八条）与新增五条音乐路径分别验收，音乐路径不替代科学覆盖要求。
 
 | 学科 | 已注册模板 | 完整主题要求 | 状态 |
 | --- | --- | --- | --- |
@@ -26,6 +26,7 @@
 | S20 工程、电子、控制与信号 | `control.pid`、`signal.aliasing` | 基础结构受力、电子元件、反馈/PID、时频分析、采样/混叠、滤波 | 部分实现，人工复核待完成 |
 | S21 地球、地理、环境与空间科学 | `earth.seasons`、`earth.radiative_balance` | 地形/地层、板块与水循环、气候基础、太阳系/季节、环境数据 | 部分实现，人工复核待完成 |
 | S22 经济与其他知识领域 | `economics.supply_demand`、`economics.prisoner` | 供需、边际与博弈基础；历史时间线、语言结构、论证关系等通用教程表达 | 部分实现，人工复核待完成 |
+| S23 音乐与 EDM 制作（扩展） | `music.keyboard`、`music.harmony`、`music.rhythm`、`music.synth`、`music.arrangement`、`music.mixing` | 乐理、键盘、鼓节奏、和弦旋律、合成、编曲与混音；Big Room、Progressive House、Melbourne Bounce、DnB；Ableton Live 12 实践 | 部分实现，人工复核待完成 |
 
 | 路径 | 节点/样例 | 模板版本 | 家族数 | 科学参考 |
 | --- | --- | --- | --- | --- |
@@ -35,3 +36,21 @@
 | mechanics | 抛体运动的射程 | physics.projectile@1 | 3 | 射程 v² sin(2θ)/g。 |
 | mechanics | 弹簧如何储存能量 | physics.spring@1 | 3 | ω=√(k/m)，总能量为kA²/2。 |
 | mechanics | 简谐振动的周期 | physics.spring@1 | 3 | ω=√(k/m)，总能量为kA²/2。 |
+| music.foundations | 节拍、音阶与键盘 | music.keyboard@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.foundations | 和弦、转位与旋律动机 | music.harmony@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.foundations | 鼓格、重音与律动 | music.rhythm@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.foundations | 合成音色：从 Pluck 到 Pad | music.synth@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.foundations | 从循环到完整编排 | music.arrangement@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.foundations | 混音、侧链与空间 | music.mixing@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.bigroom | Big Room：节奏与动机 | music.rhythm@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.bigroom | Big Room：音色与混音 | music.mixing@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.bigroom | Big Room：段落与成曲 | music.arrangement@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.progressive | Progressive House：节奏与动机 | music.rhythm@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.progressive | Progressive House：音色与混音 | music.mixing@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.progressive | Progressive House：段落与成曲 | music.arrangement@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.bounce | Melbourne Bounce：节奏与动机 | music.rhythm@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.bounce | Melbourne Bounce：音色与混音 | music.mixing@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.bounce | Melbourne Bounce：段落与成曲 | music.arrangement@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.dnb | DnB：节奏与动机 | music.rhythm@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.dnb | DnB：音色与混音 | music.mixing@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |
+| music.dnb | DnB：段落与成曲 | music.arrangement@1 | 3 | 十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。 |

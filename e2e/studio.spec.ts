@@ -372,7 +372,7 @@ test('A22/A25/A26 三维截面与真实小网络训练', async ({ page }) => {
   await page.getByRole('button', { name: '实验室', exact: true }).click();
   await page.getByLabel('训练轮数').fill('10');
   await page.getByRole('button', { name: '开始真实训练', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('训练完成', { timeout: 35000 });
+  await expect(page.getByRole('status', { name: '训练状态' })).toContainText('训练完成', { timeout: 35000 });
   const section = page.getByRole('region', { name: '立方体的平面截面', exact: true });
   await section.scrollIntoViewIfNeeded();
   await expect(section.locator('canvas')).toBeVisible({ timeout: 15000 });

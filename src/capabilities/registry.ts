@@ -3,6 +3,8 @@ import { requireThat } from '../domain/errors.js';
 import { extended } from './extended.js';
 import { spatial } from './spatial.js';
 import { neural } from './neural.js';
+import { musicCapabilities, defaultMusicConfig } from '../music/capabilities.js';
+import { musicConfig, musicLength, musicSummary, sequence } from '../music/model.js';
 const parameter = (min: number, max: number, value: number, step = 0.1) => ({
   min,
   max,
@@ -15,6 +17,7 @@ export interface Capability {
   subject: string;
   title: string;
   type:
+    | 'music_lab'
     | 'geometry2d'
     | 'simulation'
     | 'data_chart'
@@ -227,6 +230,7 @@ export const capabilities: Capability[] = [
   ...extended,
   ...spatial,
   ...neural,
+  ...musicCapabilities,
 ];
 export function capability(id: string, version = 1) {
   const c = capabilities.find((c) => c.id === id && c.version === version);
@@ -243,5 +247,23 @@ export function validateParameters(c: Capability, input: unknown) {
   return z.strictObject(shape).parse(input);
 }
 export function publicCapabilities() {
-  return capabilities.map(({ compute, ...c }) => ({ ...c, ready: true }));
+  return capabilities.map(({ compute, ...c }) => ({ ...c, ready: true,
+    ...(c.type === 'music_lab' ? { defaultConfig: defaultMusicConfig(c.id), configSchema: z.toJSONSchema(musicConfig) } : {}) }));
+}
+
+export function validateConfig(c: Capability, input: unknown): Record<string, unknown> {
+  return c.type === 'music_lab' ? musicConfig.parse(input) : validateParameters(c, input);
+}
+export function inspectCapability(c: Capability, input: unknown, step = 0, selectedIds: string[] = []) {
+  requireThat(Number.isInteger(step) && step >= 0, 'CONTEXT_INVALID', '步骤无效');
+  if (c.type === 'music_lab') {
+    const parameters = musicConfig.parse(input);
+    requireThat(step <= musicLength(parameters) * 4, 'CONTEXT_INVALID', '音乐位置越界');
+    const notes = sequence(parameters);
+    requireThat(selectedIds.every(id => notes.some(n => n.id === id || `track:${n.instrument}` === id)), 'CONTEXT_INVALID', '音符或轨道不存在');
+    return { parameters, values: musicSummary(parameters, step) };
+  }
+  const parameters = validateParameters(c, input), computed = c.compute(parameters, step);
+  requireThat(step <= 100 && selectedIds.every(id => computed.atoms?.some(a => a.id === id)), 'CONTEXT_INVALID', '实验步骤或所选对象无效');
+  return { parameters, values: computed.values };
 }

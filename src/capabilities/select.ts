@@ -1,5 +1,6 @@
 import { publicCapabilities } from './registry.js';
 const hints: Record<string, RegExp> = {
+  S23: /音乐|乐理|钢琴|鼓|节奏|编曲|混音|和弦|音色|EDM|House|Bounce|DnB|Ableton|MIDI|synth/i,
   S01: /小学|分数|小数|百分|四则|比例/,
   S02: /代数|函数|方程|数列|复数|三角函数/,
   S03: /几何|三角形|圆|截面|立体/,
@@ -24,6 +25,7 @@ const hints: Record<string, RegExp> = {
   S22: /经济|供需|博弈|历史|语言|论证/,
 };
 export function selectCapabilities(topic: string) {
+  if (hints.S23.test(topic)) return publicCapabilities().filter(c => c.subject === 'S23');
   const all = publicCapabilities(),
     subjects = Object.entries(hints)
       .filter(([, pattern]) => pattern.test(topic))

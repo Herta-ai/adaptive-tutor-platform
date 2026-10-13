@@ -1,6 +1,6 @@
 import { curriculumDraft, lessonDraft, exercise, type LessonDraft } from '../contracts/v1.js';
 import { z } from 'zod';
-import { capability, validateParameters } from '../capabilities/registry.js';
+import { capability, validateConfig } from '../capabilities/registry.js';
 import { assertDag, convert } from './assessment.js';
 import { requireThat } from './errors.js';
 export function validateCurriculum(input: unknown) {
@@ -82,7 +82,7 @@ export function validateLesson(
         'CONTENT_INVALID',
         '模板类型或计算模式不符',
       );
-      validateParameters(c, b.config);
+      validateConfig(c, b.config);
     }
   }
   for (const e of p.exercises) {

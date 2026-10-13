@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { Store, uuid } from '../src/storage/database.js';
 import { Courses } from '../src/domain/courses.js';
 import { createGeometryExample } from '../src/domain/examples.js';
+import { createMusicCourse } from '../src/music/courses.js';
+import { musicConfig } from '../src/music/model.js';
 import { AppError } from '../src/domain/errors.js';
 import { saveAgentConfig } from '../src/runtime/config.js';
 const run = vi.hoisted(() => vi.fn());
@@ -65,6 +67,68 @@ const message = (id: string) =>
   store
     .list('message', session.courseId, session.id)
     .find((m) => m.requestId === id && m.role === 'assistant');
+it('音乐导师收到选中音符与评分摘要，不收到完整乐谱或演奏事件', async () => {
+  run.mockImplementation(async () => response('按当前小节检查起音。'));
+  const course = createMusicCourse(courses, 'foundations');
+  node = store.list('node', course.id)[0];
+  session = store.put('session', {
+    id: uuid(),
+    courseId: course.id,
+    status: 'active',
+    providerBindingValid: false,
+  });
+  const progress = courses.start(node.id, 'start');
+  const concept = courses.assign(node.id, progress.cycleId, node.objectives[0].id);
+  courses.attempt(concept.assignmentId, uuid(), { optionId: 'o0' });
+  const performance = courses.assign(node.id, progress.cycleId, node.objectives[0].id);
+  courses.attempt(performance.assignmentId, uuid(), {
+    completed: true,
+    calibrationMs: 0,
+    events: [],
+  });
+  const config = musicConfig.parse({
+    notes: [
+      { id: 'selected', instrument: 'piano', pitch: 60, beat: 0, duration: 1, velocity: 96 },
+      {
+        id: 'unselected-secret-note',
+        instrument: 'piano',
+        pitch: 62,
+        beat: 1,
+        duration: 1,
+        velocity: 96,
+      },
+    ],
+  });
+  const request = store.transaction(() =>
+    jobs.ask(session.id, {
+      clientRequestId: uuid(),
+      question: '为什么没有通过？',
+      context: {
+        nodeId: node.id,
+        lessonVersion: 1,
+        blockId: 'music',
+        selection: null,
+        activeAssignmentId: null,
+        componentState: {
+          templateId: 'music.keyboard',
+          templateVersion: 1,
+          runRevision: 0,
+          step: 0,
+          selectedIds: ['selected'],
+          parameters: config,
+          observables: {},
+        },
+      },
+    }),
+  );
+  await vi.waitFor(() => expect(store.must('job', request.requestId).state).toBe('completed'));
+  const prompt = run.mock.calls[0][0].prompt;
+  expect(prompt).toContain('selectedNotes');
+  expect(prompt).toContain('recentPerformance');
+  expect(prompt).not.toContain('unselected-secret-note');
+  expect(prompt).not.toContain('"events"');
+  expect(prompt).not.toContain('"notes"');
+});
 it('导师直接问答：提交当前上下文、最终文本替换增量，后续使用指定会话', async () => {
   run.mockImplementation(async (options) => {
     options.onDelta('预览', 1);

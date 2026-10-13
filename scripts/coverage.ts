@@ -5,6 +5,7 @@ import { capabilities } from '../src/capabilities/registry.js';
 import { builtInPaths } from '../src/domain/paths.js';
 import { Store } from '../src/storage/database.js';
 import { Courses } from '../src/domain/courses.js';
+import { createMusicCourse, musicCourses } from '../src/music/courses.js';
 const root = mkdtempSync(join(tmpdir(), 'tutor-coverage-'));
 const store = new Store(root);
 const paths: { id: string; subject: string; nodes: number; scientificHumanReview: string }[] = [];
@@ -18,7 +19,7 @@ const boundExamples: {
 }[] = [];
 try {
   const courses = new Courses(store);
-  for (const path of builtInPaths) {
+  for (const path of [...builtInPaths, ...musicCourses.map(c => ({ id: `music.${c.id}`, subject: '音乐与 EDM', create: (courses: Courses) => createMusicCourse(courses, c.id) }))]) {
     const course = path.create(courses);
     const lessons = store.list('lesson', course.id);
     paths.push({
@@ -77,9 +78,9 @@ const report = {
   registeredTemplates: capabilities.length,
   subjectGroups: subjects.length,
   completeTeachingPaths: paths.filter((p) => p.nodes >= 3).length,
-  requiredTeachingPaths: 8,
+  requiredTeachingPaths: 13,
   fullyBoundDemonstrations: boundExamples.length,
-  requiredBoundDemonstrations: 44,
+  requiredBoundDemonstrations: 50,
   phase1Complete: false,
   subjects,
   paths,
@@ -87,7 +88,7 @@ const report = {
 writeFileSync('specs/phase-1/subject-coverage.json', JSON.stringify(report, null, 2));
 writeFileSync(
   'specs/phase-1/subject-coverage.md',
-  `# 学科覆盖追踪\n\n注册模板不等于完整学科验收。通过实际发布内置课程统计：${paths.length} 条三节点路径、${boundExamples.length} 个课程绑定演示；人工复核待完成。全部主题及八条路径仍未齐备。\n\n| 学科 | 已注册模板 | 完整主题要求 | 状态 |\n| --- | --- | --- | --- |\n` +
+  `# 学科覆盖追踪\n\n注册模板不等于完整学科验收。通过实际发布内置课程统计：${paths.length} 条至少三节点路径、${boundExamples.length} 个课程绑定演示；人工复核待完成。原有科学路径要求（八条）与新增五条音乐路径分别验收，音乐路径不替代科学覆盖要求。\n\n| 学科 | 已注册模板 | 完整主题要求 | 状态 |\n| --- | --- | --- | --- |\n` +
     subjects
       .map(
         (s) =>

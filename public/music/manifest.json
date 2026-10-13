@@ -1,0 +1,79 @@
+{
+  "version": "vcsl-1",
+  "revision": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+  "license": "CC0-1.0",
+  "attribution": "Versilian Studios — Versilian Community Sample Library",
+  "processing": "Mono PCM16, peak normalization, 4s piano / 2s drums, edge fades; source sample rate retained.",
+  "samples": [
+    {
+      "id": "piano-2",
+      "file": "piano-2.wav",
+      "root": 48,
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Kawai/Sustains/GPiano_sus_C2_v3_rr1_Player.wav",
+      "sourceSha256": "5d22de6d71e3accb05e2dea5c5208856ac2361c45e26079bffac7b1a98e9360d",
+      "sha256": "5b3d679782c05b89509701a046e650bf0f6461ce08ea10293e56bb29ddb2cada",
+      "bytes": 352844,
+      "sampleRate": 44100
+    },
+    {
+      "id": "piano-3",
+      "file": "piano-3.wav",
+      "root": 60,
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Kawai/Sustains/GPiano_sus_C3_v3_rr1_Player.wav",
+      "sourceSha256": "98496ea0d77ba1a753bc390b499267e9dc0b9015f9f928ab6f26bff39daef9a4",
+      "sha256": "97cc8541a025a8416104cd8c457c0bdde11da06ba4dbf452ad1bb803f3263b86",
+      "bytes": 352844,
+      "sampleRate": 44100
+    },
+    {
+      "id": "piano-4",
+      "file": "piano-4.wav",
+      "root": 72,
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Kawai/Sustains/GPiano_sus_C4_v3_rr1_Player.wav",
+      "sourceSha256": "eb5faca3331cd32f15f6a2302dba69b073a2ca600fed606bf456e60260d06e5b",
+      "sha256": "2678fe7065efa824c18e4bcc36188c640a47779a1443688864b33ede36897205",
+      "bytes": 352844,
+      "sampleRate": 44100
+    },
+    {
+      "id": "piano-5",
+      "file": "piano-5.wav",
+      "root": 84,
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Kawai/Sustains/GPiano_sus_C5_v3_rr1_Player.wav",
+      "sourceSha256": "3cbb54ef6b504b2de8bd18c553001b974d5c5d3898e2a8c5a42d2e15cfcf9853",
+      "sha256": "995db2c5a51881f682f4c5c28201bc1c18f4963f82132ed27f8b1e841847d8ee",
+      "bytes": 352844,
+      "sampleRate": 44100
+    },
+    {
+      "id": "kick",
+      "file": "kick.wav",
+      "root": 36,
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v5_rr1_Sum.wav",
+      "sourceSha256": "642aaf3375eaff1307973f7de3ccbf74d18e71fb3cf9412e021b08fc3bf1981c",
+      "sha256": "152fe8c37becc44beb51b8e53f195821702b1a227c7dc9f2b1c0ba792db3b18f",
+      "bytes": 176444,
+      "sampleRate": 44100
+    },
+    {
+      "id": "snare",
+      "file": "snare.wav",
+      "root": 38,
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%201/Snare2_HitSN_v3_rr1_Mid.wav",
+      "sourceSha256": "3d71765aa0d1e13260abeb003720aef0841432df601883177bf70e97d9af6c99",
+      "sha256": "ee6d10f564911cafa262b3ff6fc75c0ede998397d07cc0d9e1decab9f12e8226",
+      "bytes": 152674,
+      "sampleRate": 44100
+    },
+    {
+      "id": "hat",
+      "file": "hat.wav",
+      "root": 42,
+      "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_HitC_v3_rr1_Mid.wav",
+      "sourceSha256": "b65ca06ea4f8b5209fc8d98912094be1212911f21e01bd949cc9960db049d37c",
+      "sha256": "43f9d307d83c7daadbddc843c2c97c8ebc17e7624eb07442ce4df59ba0224a3d",
+      "bytes": 109388,
+      "sampleRate": 44100
+    }
+  ]
+}

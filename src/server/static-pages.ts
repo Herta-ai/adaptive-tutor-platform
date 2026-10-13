@@ -20,6 +20,8 @@ const types: Record<string, string> = {
   '.woff2': 'font/woff2',
   '.ttf': 'font/ttf',
   '.wasm': 'application/wasm',
+  '.wav': 'audio/wav',
+  '.mid': 'audio/midi',
 };
 
 export function staticPages(directory: string) {

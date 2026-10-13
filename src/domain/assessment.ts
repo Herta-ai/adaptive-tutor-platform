@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Exercise } from '../contracts/v1.js';
 import { requireThat } from './errors.js';
+import { gradePerformance } from '../music/model.js';
 
 import { convert } from './units.js';
 export { convert } from './units.js';
@@ -12,6 +13,7 @@ export function grade(
   parameterRanges?: Record<string, { min: number; max: number }>,
 ) {
   switch (e.kind) {
+    case 'music_performance': return gradePerformance(e.score, input).correct;
     case 'single_choice': {
       const a = z.strictObject({ optionId: z.string() }).parse(input);
       requireThat(

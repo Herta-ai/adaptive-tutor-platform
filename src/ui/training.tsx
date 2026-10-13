@@ -106,7 +106,7 @@ export function Training() {
           <Square className="h-3 w-3" />
           停止训练
         </Button>
-        <span role="status" className="text-xs font-medium text-primary bg-secondary px-2.5 py-1 rounded-md">
+        <span role="status" aria-label="训练状态" className="text-xs font-medium text-primary bg-secondary px-2.5 py-1 rounded-md">
           {status}
         </span>
       </div>

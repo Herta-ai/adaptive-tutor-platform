@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-26T05:51:15.044Z",
-  "registeredTemplates": 48,
-  "subjectGroups": 22,
-  "completeTeachingPaths": 2,
-  "requiredTeachingPaths": 8,
-  "fullyBoundDemonstrations": 6,
-  "requiredBoundDemonstrations": 44,
+  "generatedAt": "2026-10-13T15:01:19.241Z",
+  "registeredTemplates": 54,
+  "subjectGroups": 23,
+  "completeTeachingPaths": 7,
+  "requiredTeachingPaths": 13,
+  "fullyBoundDemonstrations": 24,
+  "requiredBoundDemonstrations": 50,
   "phase1Complete": false,
   "subjects": [
     {
@@ -566,6 +566,202 @@
       ],
       "coverage": "partial",
       "scientificHumanReview": "pending"
+    },
+    {
+      "id": "S23",
+      "title": "音乐与 EDM 制作（扩展）",
+      "topics": "乐理、键盘、鼓节奏、和弦旋律、合成、编曲与混音；Big Room、Progressive House、Melbourne Bounce、DnB；Ableton Live 12 实践",
+      "interaction": "音频时钟同步谱面、网页/MIDI 演奏、实际音频处理、正式演奏判分、MIDI/WAV 干声下载",
+      "templates": [
+        {
+          "id": "music.keyboard",
+          "version": 1,
+          "title": "音阶与键盘",
+          "examples": [
+            {
+              "pathId": "music.foundations",
+              "title": "节拍、音阶与键盘",
+              "templateId": "music.keyboard",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            }
+          ]
+        },
+        {
+          "id": "music.harmony",
+          "version": 1,
+          "title": "和弦与旋律",
+          "examples": [
+            {
+              "pathId": "music.foundations",
+              "title": "和弦、转位与旋律动机",
+              "templateId": "music.harmony",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            }
+          ]
+        },
+        {
+          "id": "music.rhythm",
+          "version": 1,
+          "title": "鼓与律动",
+          "examples": [
+            {
+              "pathId": "music.foundations",
+              "title": "鼓格、重音与律动",
+              "templateId": "music.rhythm",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.bigroom",
+              "title": "Big Room：节奏与动机",
+              "templateId": "music.rhythm",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.progressive",
+              "title": "Progressive House：节奏与动机",
+              "templateId": "music.rhythm",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.bounce",
+              "title": "Melbourne Bounce：节奏与动机",
+              "templateId": "music.rhythm",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.dnb",
+              "title": "DnB：节奏与动机",
+              "templateId": "music.rhythm",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            }
+          ]
+        },
+        {
+          "id": "music.synth",
+          "version": 1,
+          "title": "声音设计",
+          "examples": [
+            {
+              "pathId": "music.foundations",
+              "title": "合成音色：从 Pluck 到 Pad",
+              "templateId": "music.synth",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            }
+          ]
+        },
+        {
+          "id": "music.arrangement",
+          "version": 1,
+          "title": "编曲与段落",
+          "examples": [
+            {
+              "pathId": "music.foundations",
+              "title": "从循环到完整编排",
+              "templateId": "music.arrangement",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.bigroom",
+              "title": "Big Room：段落与成曲",
+              "templateId": "music.arrangement",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.progressive",
+              "title": "Progressive House：段落与成曲",
+              "templateId": "music.arrangement",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.bounce",
+              "title": "Melbourne Bounce：段落与成曲",
+              "templateId": "music.arrangement",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.dnb",
+              "title": "DnB：段落与成曲",
+              "templateId": "music.arrangement",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            }
+          ]
+        },
+        {
+          "id": "music.mixing",
+          "version": 1,
+          "title": "混音与侧链",
+          "examples": [
+            {
+              "pathId": "music.foundations",
+              "title": "混音、侧链与空间",
+              "templateId": "music.mixing",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.bigroom",
+              "title": "Big Room：音色与混音",
+              "templateId": "music.mixing",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.progressive",
+              "title": "Progressive House：音色与混音",
+              "templateId": "music.mixing",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.bounce",
+              "title": "Melbourne Bounce：音色与混音",
+              "templateId": "music.mixing",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            },
+            {
+              "pathId": "music.dnb",
+              "title": "DnB：音色与混音",
+              "templateId": "music.mixing",
+              "templateVersion": 1,
+              "reference": "十二平均律，A4=440 Hz。谱面和声音共用事件序列；音色为采样及教学合成器。",
+              "families": 3
+            }
+          ]
+        }
+      ],
+      "coverage": "partial",
+      "scientificHumanReview": "pending"
     }
   ],
   "paths": [
@@ -578,6 +774,36 @@
     {
       "id": "mechanics",
       "subject": "力学",
+      "nodes": 3,
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "music.foundations",
+      "subject": "音乐与 EDM",
+      "nodes": 6,
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "music.bigroom",
+      "subject": "音乐与 EDM",
+      "nodes": 3,
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "music.progressive",
+      "subject": "音乐与 EDM",
+      "nodes": 3,
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "music.bounce",
+      "subject": "音乐与 EDM",
+      "nodes": 3,
+      "scientificHumanReview": "pending"
+    },
+    {
+      "id": "music.dnb",
+      "subject": "音乐与 EDM",
       "nodes": 3,
       "scientificHumanReview": "pending"
     }

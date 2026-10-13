@@ -11,10 +11,11 @@ import { Courses } from '../domain/courses.js';
 import { AppError, requireThat } from '../domain/errors.js';
 import { Gateway, type ToolName } from '../mcp/gateway.js';
 import { Jobs } from './jobs.js';
-import { publicCapabilities, capability, validateParameters } from '../capabilities/registry.js';
+import { publicCapabilities, capability, inspectCapability } from '../capabilities/registry.js';
 import { kinds, id } from '../contracts/v1.js';
 import { createGeometryExample } from '../domain/examples.js';
 import { createMechanicsExample } from '../domain/paths.js';
+import { createMusicCourse, type MusicCourseId } from '../music/courses.js';
 import { Remediation } from '../domain/remediation.js';
 import { Transfer } from '../transfer/learn.js';
 import { frameDocument } from '../code-sandbox/frame.js';
@@ -93,7 +94,7 @@ export function createApplication(
       res.setHeader('X-Frame-Options', 'DENY');
       res.setHeader(
         'Content-Security-Policy',
-        `default-src 'self'; script-src 'self' 'unsafe-inline'${options.dev ? " 'unsafe-eval'" : ''}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'${options.dev ? ' ws:' : ''}; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; worker-src 'self' blob:`,
+        `default-src 'self'; script-src 'self' 'unsafe-inline'${options.dev ? " 'unsafe-eval'" : ''}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'${options.dev ? ' ws:' : ''}; font-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; worker-src 'self' blob:`,
       );
       if (path === '/internal/mcp') {
         requireThat(
@@ -254,6 +255,12 @@ export function createApplication(
       if (route === '/examples/geometry' && method === 'POST') {
         const p = commandKey.parse(await body(req));
         json(res, 201, createGeometryExample(courses, p.clientRequestId));
+        return;
+      }
+      if (route.startsWith('/examples/music/') && method === 'POST') {
+        const course = z.enum(['foundations', 'bigroom', 'progressive', 'bounce', 'dnb']).parse(route.split('/').at(-1));
+        const p = commandKey.parse(await body(req));
+        json(res, 201, createMusicCourse(courses, course as MusicCourseId, p.clientRequestId));
         return;
       }
       if (route === '/examples/mechanics' && method === 'POST') {
@@ -710,9 +717,9 @@ export function createApplication(
               blockId: id,
               templateId: id,
               templateVersion: z.number().int().positive(),
-              parameters: z.record(z.string(), z.number().finite()),
+              parameters: z.record(z.string(), z.unknown()),
               selectedIds: z.array(id).max(100),
-              step: z.number().int().min(0).max(100).optional(),
+              step: z.number().int().min(0).max(4096).optional(),
             })
             .parse(await body(req));
           json(
@@ -728,13 +735,7 @@ export function createApplication(
                 409,
               );
               const c = capability(p.templateId, p.templateVersion),
-                parameters = validateParameters(c, p.parameters),
-                result = c.compute(parameters, p.step ?? 0);
-              requireThat(
-                p.selectedIds.every((id) => result.atoms?.some((a) => a.id === id)),
-                'CONTEXT_STALE',
-                '所选对象不属于当前实验',
-              );
+                result = inspectCapability(c, p.parameters, p.step ?? 0, p.selectedIds);
               const { clientRequestId, ...state } = p;
               return store.put(
                 'demo_snapshot',

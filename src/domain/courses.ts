@@ -4,6 +4,7 @@ import { validateCurriculum, validateLesson } from './content.js';
 import { requireThat } from './errors.js';
 import { evidenceWindow, grade, nextReview } from './assessment.js';
 import { capability } from '../capabilities/registry.js';
+import { gradePerformance } from '../music/model.js';
 
 export class Courses {
   constructor(readonly store: Store) {}
@@ -421,6 +422,7 @@ export class Courses {
     const progress = this.recompute(a.nodeId);
     return {
       attemptId: attempt.id,
+      ...(e.kind === 'music_performance' ? { performance: gradePerformance(e.score, answer) } : {}),
       correct,
       explanation: e.explanation,
       progress,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { performanceScore } from '../music/model.js';
 
 export const id = z.string().min(1).max(160);
 export const text = z.string().min(1).max(60000);
@@ -17,6 +18,8 @@ export const source = z.strictObject({
 const option = z.strictObject({ id, label: text });
 const baseExercise = { key: id, objectiveId: id, familyKey: id, prompt: text, explanation: text };
 export const exercise = z.discriminatedUnion('kind', [
+  z.strictObject({ ...baseExercise, kind: z.literal('music_performance'), score: performanceScore,
+    grading: z.strictObject({ algorithm: z.literal('onset-v1') }) }),
   z.strictObject({
     ...baseExercise,
     kind: z.literal('single_choice'),
@@ -84,6 +87,7 @@ export const demoTypes = [
   'code_lab',
   'ml_lab',
   'neural_lab',
+  'music_lab',
 ] as const;
 export const demoBlock = z.strictObject({
   blockId: id,

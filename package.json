@@ -12,7 +12,9 @@
     "runtimes:build": "tsx scripts/build-runtimes.ts",
     "runtimes:prepare": "tsx scripts/build-runtimes.ts --numpy",
     "dev": "tsx src/server/main.ts --dev",
-    "build": "tsx scripts/build-runtimes.ts && next build --webpack && tsx scripts/build-server.ts",
+    "build": "tsx scripts/verify-music.ts && tsx scripts/build-runtimes.ts && next build --webpack && tsx scripts/build-server.ts",
+    "music:prepare": "tsx scripts/prepare-music.ts",
+    "music:verify": "tsx scripts/verify-music.ts",
     "start": "node dist/server/main.js",
     "mcp": "tsx src/mcp/stdio.ts",
     "typecheck": "tsc --noEmit",
@@ -41,6 +43,7 @@
     "remark-math": "6.0.0",
     "sql.js": "1.13.0",
     "three": "0.180.0",
+    "vexflow": "5.0.0",
     "yauzl": "3.2.0",
     "yazl": "3.3.1",
     "zod": "4.3.6"

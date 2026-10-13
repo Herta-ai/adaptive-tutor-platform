@@ -1,3 +1,4 @@
+import { musicTutorState, gradePerformance } from '../music/model.js';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
@@ -6,7 +7,7 @@ import { Courses } from '../domain/courses.js';
 import { AppError, requireThat } from '../domain/errors.js';
 import { detectRuntime, runCli, type NativeActivity } from '../runtime/antigravity.js';
 import { receipt, draftSchemas, turn, type Kind } from '../contracts/v1.js';
-import { publicCapabilities, capability, validateParameters } from '../capabilities/registry.js';
+import { publicCapabilities, capability, inspectCapability } from '../capabilities/registry.js';
 import { Remediation } from '../domain/remediation.js';
 import { validateLesson } from '../domain/content.js';
 import { selectCapabilities } from '../capabilities/select.js';
@@ -164,18 +165,14 @@ export class Jobs {
         '实验状态不属于所引用内容',
       );
       const cap = capability(b.templateId, b.templateVersion),
-        parameters = validateParameters(cap, c.componentState.parameters);
+        parameters = c.componentState.parameters;
       requireThat(
-        (c.componentState.step ?? 0) <= 100 && JSON.stringify(c.componentState).length < 8000,
+        JSON.stringify(c.componentState).length < (cap.type === "music_lab" ? 24000 : 8000),
         'CONTEXT_TOO_LARGE',
         '实验状态过大',
       );
-      const computed = cap.compute(parameters, c.componentState.step ?? 0);
-      requireThat(
-        c.componentState.selectedIds.every((id) => computed.atoms?.some((a) => a.id === id)),
-        'CONTEXT_INVALID',
-        '所选对象不属于实验',
-      );
+      const computed = inspectCapability(cap, parameters, c.componentState.step ?? 0, c.componentState.selectedIds);
+      c.componentState.parameters = computed.parameters;
       c.componentState.observables = {
         values: computed.values,
         computationVersion: cap.version,
@@ -460,7 +457,22 @@ export class Jobs {
         .map(({ role, text }) => ({ role, text }));
       let trimmed = history;
       while (JSON.stringify(trimmed).length > 6000) trimmed = trimmed.slice(1);
-      const context = { objectives: node.objectives, block, snapshot };
+      let tutorBlock = block, tutorSnapshot = snapshot;
+      if (block?.type === 'music_lab') {
+        tutorBlock = { ...block, config: musicTutorState(block.config).parameters };
+        if (snapshot.componentState) {
+          const state = snapshot.componentState;
+          const compact = musicTutorState(state.parameters, state.selectedIds);
+          tutorSnapshot = { ...snapshot, componentState: { ...state, ...compact } };
+        }
+      }
+      const recentPerformance = this.store.list('attempt', job.courseId)
+        .filter(a => a.nodeId === node.id && !a.voidedAt).slice(-3).flatMap(a => {
+          const assignment = this.store.get('assignment', a.assignmentId);
+          const exercise = assignment && this.store.get('exercise', assignment.exerciseId);
+          return exercise?.kind === 'music_performance' ? [{ evidenceScore: a.evidenceScore, ...gradePerformance(exercise.score, a.answer) }] : [];
+        });
+      const context = { objectives: node.objectives, block: tutorBlock, snapshot: tutorSnapshot, ...(recentPerformance.length ? { recentPerformance } : {}) };
       requireThat(
         JSON.stringify(context).length <= 8000,
         'CONTEXT_TOO_LARGE',

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { id, objective, exercise } from '../contracts/v1.js';
 import { requireThat } from '../domain/errors.js';
+import { capability, inspectCapability } from '../capabilities/registry.js';
+import { performanceAnswer } from '../music/model.js';
 const revision = z.number().int().positive(),
   time = z.iso.datetime();
 const exerciseMetadata = {
@@ -18,6 +20,7 @@ export const portableExercise = z.discriminatedUnion('kind', [
   exercise.options[1].extend(exerciseMetadata),
   exercise.options[2].extend(exerciseMetadata),
   exercise.options[3].extend(exerciseMetadata),
+  exercise.options[4].extend(exerciseMetadata),
 ]);
 const course = z.strictObject({
   id,
@@ -318,6 +321,8 @@ export function validatePersonal(
           '作答证据无效',
         );
         const a = personal.assignment.find((a) => a.id === row.assignmentId);
+        const e = exercises.get(a.exerciseId);
+        if (e?.kind === 'music_performance') performanceAnswer.parse(row.answer);
         requireThat(
           a.nodeId === row.nodeId &&
             a.cycleId === row.cycleId &&
@@ -352,6 +357,12 @@ export function validatePersonal(
           'REFERENCE_INVALID',
           '历史上下文不存在',
         );
+        const state = kind === 'context' ? row.componentState : row;
+        if (state?.templateId?.startsWith('music.')) {
+          const block = l.document.blocks.find((b: any) => b.blockId === row.blockId);
+          requireThat(block?.templateId === state.templateId && block.templateVersion === state.templateVersion, 'REFERENCE_INVALID', '音乐状态与正文模板不一致');
+          inspectCapability(capability(state.templateId, state.templateVersion), state.parameters, state.step ?? 0, state.selectedIds);
+        }
       }
     }
   }

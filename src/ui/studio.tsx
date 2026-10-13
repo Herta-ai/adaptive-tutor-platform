@@ -10,6 +10,9 @@ import { LessonDemo } from './lesson-demo';
 import { capabilities } from '../capabilities/registry';
 import { CodeLab } from './code-lab';
 import { Training } from './training';
+import { MusicPerformance } from './music-performance';
+import { defaultMusicConfig } from '../music/capabilities';
+import { musicCourses } from '../music/catalog';
 import { ChatProgress } from './chat-progress';
 import { TransferControls } from './transfer-controls';
 import { Button } from '../components/ui/button';
@@ -261,6 +264,7 @@ export function Studio() {
 
   useEffect(() => {
     if (!courseId) return;
+    window.scrollTo(0, 0);
     setSnapshot(null);
     setNodeId('');
     setLesson(null);
@@ -370,7 +374,8 @@ export function Studio() {
 
   async function submitAnswer() {
     let value: unknown;
-    if (assignment.kind === 'numeric') value = { value: answer, unit: assignment.allowedUnits[0] };
+    if (assignment.kind === 'music_performance') value = JSON.parse(answer);
+    else if (assignment.kind === 'numeric') value = { value: answer, unit: assignment.allowedUnits[0] };
     else if (assignment.kind === 'single_choice') value = { optionId: answer };
     else if (assignment.kind === 'multiple_choice')
       value = { optionIds: answer.split(',').filter(Boolean) };
@@ -584,7 +589,7 @@ export function Studio() {
                   blockId: c.id,
                   templateId: c.id,
                   templateVersion: c.version,
-                  config: Object.fromEntries(
+                  config: c.type === 'music_lab' ? defaultMusicConfig(c.id) : Object.fromEntries(
                     Object.entries(c.parameters).map(([k, v]) => [k, v.value]),
                   ),
                   modelInfo: { mode: c.mode },
@@ -607,6 +612,15 @@ export function Studio() {
             </Button>
           </div>
 
+          <section className="music-starter" aria-label="EDM 与 Ableton Live 课程">
+            <span className="music-tag">从第一个节拍，到自己的作品</span>
+            <h2>EDM 制作 · Ableton Live 12</h2>
+            <p>无需联网即可开始。先理解乐理、声音与节奏，再探索四种制作路径。</p>
+            <div>{musicCourses.map(c => <button key={c.id} disabled={busy} onClick={() => void run(async () => {
+              const course = await command(`/examples/music/${c.id}`);
+              await refreshList(); setCourseId(course.id);
+            })}><strong>{c.title}</strong><span>{c.detail}</span><small>开始学习 ↗</small></button>)}</div>
+          </section>
           <section className="starter">
             <div>
               <span className="eyebrow">无需联网 · 从这里开始</span>
@@ -910,7 +924,10 @@ export function Studio() {
                           <div className="my-3 text-xs leading-relaxed">
                             <Markdown text={assignment.prompt} />
                           </div>
-                          {assignment.options ? (
+                          {assignment.kind === 'music_performance' ? <MusicPerformance key={assignment.assignmentId} score={assignment.score} disabled={busy || !!feedback?.attemptId} onAnswer={setAnswer} onHint={async () => {
+                            const result = await command(`/assignments/${assignment.assignmentId}/reveal`, { kind: 'hint' });
+                            setFeedback({ hint: true, explanation: result.text });
+                          }} /> : assignment.options ? (
                             <div className="choices">
                               {assignment.options.map((o: any) => (
                                 <label key={o.id} className="text-xs">
@@ -949,7 +966,7 @@ export function Studio() {
                           <div className="toolbar flex items-center gap-2 my-3">
                             <Button
                               size="sm"
-                              disabled={busy || !!feedback?.attemptId}
+                              disabled={busy || !!feedback?.attemptId || (assignment.kind === 'music_performance' && !answer)}
                               onClick={() => void run(submitAnswer)}
                             >
                               提交答案
@@ -981,6 +998,7 @@ export function Studio() {
                                     : '再想一想'}
                               </strong>
                               <p className="text-xs text-muted-foreground leading-relaxed">{feedback.explanation}</p>
+                              {feedback.performance && <p className="text-xs mt-2">演奏匹配率 {Math.round(feedback.performance.rate * 100)}% · 漏音 {feedback.performance.missed} · 多弹/错音 {feedback.performance.extra} · 抢拍 {feedback.performance.early} · 拖拍 {feedback.performance.late}（匹配窗口 ±{Math.round(feedback.performance.windowMs)} ms）。力度均值 {feedback.performance.expression?.averageVelocity?.toFixed(0) ?? "—"}；已记录时值 {feedback.performance.expression?.measuredDurations ?? 0} 个（描述性反馈，不计分）</p>}
                               {feedback.attemptId && !feedback.correct && (
                                 <Button
                                   variant="secondary"

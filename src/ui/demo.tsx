@@ -6,13 +6,18 @@ import dynamic from 'next/dynamic';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Play, Pause, StepForward, RotateCcw, Bookmark, MessageSquareQuote } from 'lucide-react';
+const MusicLab = dynamic(() => import('./music-lab').then(m => m.MusicLab), { ssr: false, loading: () => <p>正在加载音乐实验…</p> });
 
 const Scene = dynamic(() => import('./scene'), {
   ssr: false,
   loading: () => <p className="text-xs text-muted-foreground p-8 text-center">正在加载三维视图…</p>,
 });
 
-export function Demo({
+export function Demo(props: Parameters<typeof ScientificDemo>[0]) {
+  return capability(props.block.templateId, props.block.templateVersion).type === 'music_lab' ? <MusicLab {...props} /> : <ScientificDemo {...props} />;
+}
+
+function ScientificDemo({
   block,
   onContext,
   initialState,
